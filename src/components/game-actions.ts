@@ -134,7 +134,7 @@ export class GameActions extends LitElement {
           <select @change=${(e: Event) => {
             this.selectedDealerId = (e.target as HTMLSelectElement).value
           }}>
-            ${this.players.map((player) => html`<option value=${player.id} ?selected=${player.id === this.selectedDealerId}>${player.name}</option>`)}
+            ${this.players.filter((p) => p.isActive).map((player) => html`<option value=${player.id} ?selected=${player.id === this.selectedDealerId}>${player.name}</option>`)}
           </select>
         </div>
 

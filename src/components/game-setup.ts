@@ -4,7 +4,7 @@ import { customElement, state } from 'lit/decorators.js'
 @customElement('game-setup')
 export class GameSetup extends LitElement {
   @state()
-  private players: string[] = ['', '', '', '']
+  private players: string[] = ['', '', '', '', '', '', '', '', '', '']
 
   @state()
   private piatto: number = 0.3
@@ -80,6 +80,17 @@ export class GameSetup extends LitElement {
           </div>
 
           ${this.errorMessage ? html` <div class="error-message">${this.errorMessage}</div> ` : ''}
+
+          <div class="disclaimer">
+            <h3>⚠️ Dichiarazione di Responsabilità</h3>
+            <ul>
+              <li><strong>Gioco d'azzardo illegale:</strong> Ricorda che il gioco d'azzardo è illegale in molte giurisdizioni. Anche se Bestia potrebbe sembrare un gioco legale, verifica le leggi locali prima di giocare con denaro reale.</li>
+              <li><strong>Gioca responsabilmente:</strong> Stabilisci un limite di scommessa prima di iniziare e non superarlo.</li>
+              <li><strong>Non sei obbligato:</strong> Nessuno è obbligato a giocare. Se il gioco cessa di essere divertente, smetti di giocare.</li>
+              <li><strong>Nessuna responsabilità:</strong> Gli sviluppatori di questa app non sono responsabili per perdite monetarie, conseguenze legali o danni derivanti dall'uso di questa applicazione.</li>
+            </ul>
+            <p class="disclaimer-footer">Utilizzando questa app, accetti che hai letto e compreso questa dichiarazione.</p>
+          </div>
 
           <button class="create-btn" @click=${this.validateAndCreateSession}>Inizia Partita</button>
         </div>
@@ -160,6 +171,47 @@ export class GameSetup extends LitElement {
       border-radius: 0.5rem;
       font-size: 0.875rem;
       font-weight: 500;
+    }
+
+    .disclaimer {
+      padding: 1.25rem;
+      margin-bottom: 1.5rem;
+      background: #fef3c7;
+      border: 2px solid #f59e0b;
+      border-radius: 0.75rem;
+      font-size: 0.875rem;
+      color: #78350f;
+    }
+
+    .disclaimer h3 {
+      margin: 0 0 1rem 0;
+      font-size: 1rem;
+      font-weight: 700;
+      color: #b45309;
+    }
+
+    .disclaimer ul {
+      margin: 0 0 1rem 0;
+      padding-left: 1.5rem;
+    }
+
+    .disclaimer li {
+      margin-bottom: 0.75rem;
+      line-height: 1.5;
+    }
+
+    .disclaimer strong {
+      color: #b45309;
+      font-weight: 700;
+    }
+
+    .disclaimer-footer {
+      margin: 0;
+      font-size: 0.8rem;
+      font-style: italic;
+      color: #92400e;
+      border-top: 1px solid #f59e0b;
+      padding-top: 0.75rem;
     }
 
     .create-btn {

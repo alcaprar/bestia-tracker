@@ -21,9 +21,11 @@ export class GameInput extends LitElement {
 
   connectedCallback() {
     super.connectedCallback()
-    // Initialize all players with no selection
+    // Initialize all active players with no selection
     this.players.forEach((player) => {
-      this.playerSelection.set(player.id, 'none')
+      if (player.isActive) {
+        this.playerSelection.set(player.id, 'none')
+      }
     })
   }
 
@@ -42,19 +44,21 @@ export class GameInput extends LitElement {
       payouts.set(player.id, 0)
     })
 
-    // Get bestia players and prese conversion
+    // Get bestia players and prese conversion (only from active players)
     const preseMap = new Map<string, number>()
     const bestiaPlayers: string[] = []
 
     this.players.forEach((player) => {
-      const selection = this.playerSelection.get(player.id) || 'none'
-      if (selection === 'bestia') {
-        bestiaPlayers.push(player.id)
-        preseMap.set(player.id, 0)
-      } else if (selection === 'none') {
-        preseMap.set(player.id, 0)
-      } else {
-        preseMap.set(player.id, parseInt(selection))
+      if (player.isActive) {
+        const selection = this.playerSelection.get(player.id) || 'none'
+        if (selection === 'bestia') {
+          bestiaPlayers.push(player.id)
+          preseMap.set(player.id, 0)
+        } else if (selection === 'none') {
+          preseMap.set(player.id, 0)
+        } else {
+          preseMap.set(player.id, parseInt(selection))
+        }
       }
     })
 
@@ -88,22 +92,24 @@ export class GameInput extends LitElement {
   }
 
   private submitResult(): void {
-    // Calculate total prese
+    // Calculate total prese (only from active players)
     let totalPrese = 0
     const bestiaPlayers: string[] = []
     const preseMap = new Map<string, number>()
 
     this.players.forEach((player) => {
-      const selection = this.playerSelection.get(player.id) || 'none'
-      if (selection === 'bestia') {
-        bestiaPlayers.push(player.id)
-        preseMap.set(player.id, 0)
-      } else if (selection === 'none') {
-        preseMap.set(player.id, 0)
-      } else {
-        const preseCount = parseInt(selection)
-        preseMap.set(player.id, preseCount)
-        totalPrese += preseCount
+      if (player.isActive) {
+        const selection = this.playerSelection.get(player.id) || 'none'
+        if (selection === 'bestia') {
+          bestiaPlayers.push(player.id)
+          preseMap.set(player.id, 0)
+        } else if (selection === 'none') {
+          preseMap.set(player.id, 0)
+        } else {
+          const preseCount = parseInt(selection)
+          preseMap.set(player.id, preseCount)
+          totalPrese += preseCount
+        }
       }
     })
 
@@ -130,12 +136,14 @@ export class GameInput extends LitElement {
   }
 
   render() {
-    // Calculate total prese
+    // Calculate total prese (only from active players)
     let totalPrese = 0
     this.players.forEach((player) => {
-      const selection = this.playerSelection.get(player.id) || 'none'
-      if (selection !== 'none' && selection !== 'bestia') {
-        totalPrese += parseInt(selection)
+      if (player.isActive) {
+        const selection = this.playerSelection.get(player.id) || 'none'
+        if (selection !== 'none' && selection !== 'bestia') {
+          totalPrese += parseInt(selection)
+        }
       }
     })
 
@@ -166,7 +174,7 @@ export class GameInput extends LitElement {
         <p class="instructions">Seleziona un'opzione per giocatore (esattamente 3 prese totali richieste)</p>
 
         <div class="players-input-grid">
-          ${this.players.map(
+          ${this.players.filter((p) => p.isActive).map(
             (player) => html`
               <div class="player-input-card">
                 <div class="player-name">${player.name}</div>

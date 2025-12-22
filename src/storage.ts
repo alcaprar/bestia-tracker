@@ -57,6 +57,7 @@ export class StorageService {
       id: Math.random().toString(36).substr(2, 9),
       name,
       balance: 0,
+      isActive: true,
     }))
 
     const session: GameSession = {
@@ -271,6 +272,156 @@ export class StorageService {
     session.players = playerIds.map((id) => playerMap.get(id)!).filter(Boolean)
     this.saveSession(session)
     return session
+  }
+
+  static addPlayer(session: GameSession, playerName: string): GameSession {
+    // Add a new active player
+    const newPlayer: Player = {
+      id: Math.random().toString(36).substr(2, 9),
+      name: playerName,
+      balance: 0,
+      isActive: true,
+    }
+    // Create a new array to trigger reactivity
+    session.players = [...session.players, newPlayer]
+    this.saveSession(session)
+    return session
+  }
+
+  static togglePlayerActive(session: GameSession, playerId: string, isActive: boolean): GameSession {
+    // Create a new array with updated player to trigger reactivity
+    session.players = session.players.map((p) =>
+      p.id === playerId ? { ...p, isActive } : p
+    )
+    this.saveSession(session)
+    return session
+  }
+
+  static getBalanceProgression(session: GameSession, playerId: string): { timestamp: number; balance: number }[] {
+    const progression: { timestamp: number; balance: number }[] = []
+    let balance = 0
+
+    // Replay events in chronological order
+    for (const event of session.events) {
+      const transaction = event.transactions.find((t) => t.playerId === playerId)
+      if (transaction) {
+        balance += transaction.amount
+        progression.push({ timestamp: event.timestamp, balance })
+      }
+    }
+
+    return progression
+  }
+
+  static getBestiaCount(session: GameSession): Map<string, number> {
+    const bestiaCount = new Map<string, number>()
+
+    // Initialize all players with 0
+    session.players.forEach((player) => {
+      bestiaCount.set(player.id, 0)
+    })
+
+    // Count bestia occurrences
+    for (const event of session.events) {
+      if (event.type === 'round_end' && event.metadata?.bestiaPlayers) {
+        event.metadata.bestiaPlayers.forEach((playerId) => {
+          bestiaCount.set(playerId, (bestiaCount.get(playerId) || 0) + 1)
+        })
+      }
+    }
+
+    return bestiaCount
+  }
+
+  static getRoundStats(session: GameSession): { roundNumber: number; timestamp: number; winner: string; winnerName: string }[] {
+    const rounds: { roundNumber: number; timestamp: number; winner: string; winnerName: string }[] = []
+    let roundNumber = 0
+
+    for (const event of session.events) {
+      if (event.type === 'round_end') {
+        roundNumber++
+        // Find the player with the most prese (winner)
+        const preseMap = event.metadata?.prese ? new Map(event.metadata.prese) : new Map()
+        let maxPrese = 0
+        let winnerId = ''
+
+        for (const [pid, prese] of preseMap.entries()) {
+          if (prese > maxPrese) {
+            maxPrese = prese
+            winnerId = pid
+          }
+        }
+
+        const winnerName = session.players.find((p) => p.id === winnerId)?.name || 'Unknown'
+        rounds.push({ roundNumber, timestamp: event.timestamp, winner: winnerId, winnerName })
+      }
+    }
+
+    return rounds
+  }
+
+  static getPlayerWins(session: GameSession): Map<string, number> {
+    const wins = new Map<string, number>()
+
+    // Initialize all players with 0
+    session.players.forEach((player) => {
+      wins.set(player.id, 0)
+    })
+
+    // Count round_end events where player has positive transaction (won money)
+    for (const event of session.events) {
+      if (event.type === 'round_end') {
+        event.transactions.forEach(({ playerId, amount }) => {
+          if (amount > 0) {
+            wins.set(playerId, (wins.get(playerId) || 0) + 1)
+          }
+        })
+      }
+    }
+
+    return wins
+  }
+
+  static getPlayerRoundsPlayed(session: GameSession): Map<string, number> {
+    const roundsPlayed = new Map<string, number>()
+
+    // Initialize all players with 0
+    session.players.forEach((player) => {
+      roundsPlayed.set(player.id, 0)
+    })
+
+    // Count round_end events where player has any transaction
+    for (const event of session.events) {
+      if (event.type === 'round_end') {
+        event.transactions.forEach(({ playerId }) => {
+          roundsPlayed.set(playerId, (roundsPlayed.get(playerId) || 0) + 1)
+        })
+      }
+    }
+
+    return roundsPlayed
+  }
+
+  static getPlayerLosses(session: GameSession): Map<string, number> {
+    const losses = new Map<string, number>()
+
+    // Initialize all players with 0
+    session.players.forEach((player) => {
+      losses.set(player.id, 0)
+    })
+
+    // Count round_end events where player has negative transaction (lost money)
+    for (const event of session.events) {
+      if (event.type === 'round_end') {
+        event.transactions.forEach(({ playerId, amount }) => {
+          if (amount < 0) {
+            losses.set(playerId, (losses.get(playerId) || 0) + 1)
+          }
+        })
+      }
+    }
+
+    return losses
   }
 
   static clearSession(): void {

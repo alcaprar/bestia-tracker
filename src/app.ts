@@ -7,8 +7,9 @@ import './components/player-list.js'
 import './components/game-actions.js'
 import './components/game-history.js'
 import './components/game-settings.js'
+import './components/game-stats.js'
 
-type TabType = 'record' | 'history' | 'settings'
+type TabType = 'record' | 'history' | 'settings' | 'statistics'
 
 @customElement('bestia-app')
 export class BestiaApp extends LitElement {
@@ -100,6 +101,22 @@ export class BestiaApp extends LitElement {
     }
   }
 
+  private handlePlayerAdded(event: CustomEvent<{ playerName: string }>): void {
+    if (this.session) {
+      const updatedSession = StorageService.addPlayer(this.session, event.detail.playerName)
+      this.session = { ...updatedSession }
+      this.requestUpdate()
+    }
+  }
+
+  private handlePlayerStatusChanged(event: CustomEvent<{ playerId: string; isActive: boolean }>): void {
+    if (this.session) {
+      const updatedSession = StorageService.togglePlayerActive(this.session, event.detail.playerId, event.detail.isActive)
+      this.session = { ...updatedSession }
+      this.requestUpdate()
+    }
+  }
+
   render() {
     if (this.showSetup || !this.session) {
       return html`<game-setup @create-session=${this.handleSessionCreate}></game-setup>`
@@ -152,6 +169,12 @@ export class BestiaApp extends LitElement {
             >
               ⚙ Impostazioni
             </button>
+            <button
+              class="tab-btn ${this.activeTab === 'statistics' ? 'active' : ''}"
+              @click=${() => (this.activeTab = 'statistics')}
+            >
+              📊 Statistiche
+            </button>
           </div>
 
           <div class="tabs-content">
@@ -176,14 +199,20 @@ export class BestiaApp extends LitElement {
                       @delete-event=${this.handleDeleteEvent}
                     ></game-history>
                   `
-                : html`
-                    <game-settings
-                      .players=${this.session.players}
-                      .piatto=${this.session.piatto}
-                      @piatto-changed=${this.handlePiattoChanged}
-                      @player-order-changed=${this.handlePlayerOrderChanged}
-                    ></game-settings>
-                  `}
+                : this.activeTab === 'settings'
+                  ? html`
+                      <game-settings
+                        .players=${this.session.players}
+                        .piatto=${this.session.piatto}
+                        @piatto-changed=${this.handlePiattoChanged}
+                        @player-order-changed=${this.handlePlayerOrderChanged}
+                        @player-added=${this.handlePlayerAdded}
+                        @player-status-changed=${this.handlePlayerStatusChanged}
+                      ></game-settings>
+                    `
+                  : html`
+                      <game-stats .session=${this.session}></game-stats>
+                    `}
           </div>
         </div>
       </div>

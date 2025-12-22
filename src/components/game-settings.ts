@@ -1,6 +1,7 @@
 import { LitElement, css, html } from 'lit'
 import { customElement, property, state } from 'lit/decorators.js'
 import type { Player } from '../types.js'
+import type { PropertyValues } from 'lit'
 
 @customElement('game-settings')
 export class GameSettings extends LitElement {
@@ -19,10 +20,25 @@ export class GameSettings extends LitElement {
   @state()
   private draggedIndex: number | null = null
 
+  @state()
+  private newPlayerName: string = ''
+
   connectedCallback() {
     super.connectedCallback()
     this.editedPiatto = this.piatto
     this.playerOrder = [...this.players]
+  }
+
+  willUpdate(changedProperties: PropertyValues): void {
+    super.willUpdate(changedProperties)
+    // Sync playerOrder whenever players property changes
+    if (changedProperties.has('players')) {
+      this.playerOrder = [...this.players]
+    }
+    // Sync editedPiatto whenever piatto property changes
+    if (changedProperties.has('piatto')) {
+      this.editedPiatto = this.piatto
+    }
   }
 
   private updatePiatto(e: Event): void {
@@ -69,6 +85,26 @@ export class GameSettings extends LitElement {
     )
   }
 
+  private addPlayer(): void {
+    const name = this.newPlayerName.trim()
+    if (name.length === 0) return
+
+    this.dispatchEvent(
+      new CustomEvent('player-added', {
+        detail: { playerName: name },
+      })
+    )
+    this.newPlayerName = ''
+  }
+
+  private togglePlayerStatus(playerId: string, isActive: boolean): void {
+    this.dispatchEvent(
+      new CustomEvent('player-status-changed', {
+        detail: { playerId, isActive },
+      })
+    )
+  }
+
   render() {
     return html`
       <div class="settings-container">
@@ -90,13 +126,27 @@ export class GameSettings extends LitElement {
         </div>
 
         <div class="settings-section">
+          <h3>Aggiungi Giocatore</h3>
+          <div class="add-player-group">
+            <input
+              type="text"
+              placeholder="Nome del giocatore"
+              .value=${this.newPlayerName}
+              @input=${(e: Event) => (this.newPlayerName = (e.target as HTMLInputElement).value)}
+              @keypress=${(e: KeyboardEvent) => e.key === 'Enter' && this.addPlayer()}
+            />
+            <button class="add-btn" @click=${this.addPlayer}>+ Aggiungi</button>
+          </div>
+        </div>
+
+        <div class="settings-section">
           <h3>Ordine Giocatori</h3>
           <p class="help-text">Trascinare per riordinare i giocatori. Questo determina la rotazione del mazziere.</p>
           <div class="player-list">
             ${this.playerOrder.map(
               (player, index) => html`
                 <div
-                  class="player-item ${this.draggedIndex === index ? 'dragging' : ''}"
+                  class="player-item ${this.draggedIndex === index ? 'dragging' : ''} ${!player.isActive ? 'inactive' : ''}"
                   draggable="true"
                   @dragstart=${() => this.startDrag(index)}
                   @dragover=${this.dragOver}
@@ -105,6 +155,13 @@ export class GameSettings extends LitElement {
                   <span class="drag-handle">⋮⋮</span>
                   <span class="player-name">${player.name}</span>
                   <span class="position">#${index + 1}</span>
+                  <button
+                    class="status-btn ${player.isActive ? 'active' : 'inactive'}"
+                    @click=${() => this.togglePlayerStatus(player.id, !player.isActive)}
+                    title=${player.isActive ? 'Disattiva giocatore' : 'Attiva giocatore'}
+                  >
+                    ${player.isActive ? '✓' : '✕'}
+                  </button>
                 </div>
               `
             )}
@@ -181,6 +238,42 @@ export class GameSettings extends LitElement {
       box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
     }
 
+    .add-player-group {
+      display: flex;
+      gap: 0.5rem;
+      margin-bottom: 1rem;
+    }
+
+    .add-player-group input {
+      flex: 1;
+      padding: 0.75rem;
+      border: 2px solid var(--gray-300);
+      border-radius: 0.375rem;
+      font-size: 1rem;
+    }
+
+    .add-player-group input:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+    }
+
+    .add-btn {
+      padding: 0.75rem 1rem;
+      background: var(--primary);
+      color: white;
+      border: none;
+      border-radius: 0.375rem;
+      font-size: 1rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .add-btn:hover {
+      background: #2563eb;
+    }
+
     .help-text {
       margin: 0 0 1rem 0;
       font-size: 0.875rem;
@@ -216,6 +309,16 @@ export class GameSettings extends LitElement {
       background: rgba(59, 130, 246, 0.1);
     }
 
+    .player-item.inactive {
+      opacity: 0.6;
+      background: #f3f4f6;
+    }
+
+    .player-item.inactive .player-name {
+      text-decoration: line-through;
+      color: var(--gray-700);
+    }
+
     .drag-handle {
       color: var(--gray-700);
       font-weight: 700;
@@ -232,6 +335,36 @@ export class GameSettings extends LitElement {
       font-size: 0.875rem;
       color: var(--gray-700);
       font-weight: 600;
+    }
+
+    .status-btn {
+      padding: 0.375rem 0.75rem;
+      background: transparent;
+      border: 2px solid var(--gray-300);
+      border-radius: 0.375rem;
+      color: var(--gray-700);
+      cursor: pointer;
+      font-weight: 700;
+      font-size: 1rem;
+      transition: all 0.2s;
+    }
+
+    .status-btn.active {
+      color: var(--success);
+      border-color: var(--success);
+    }
+
+    .status-btn.active:hover {
+      background: rgba(16, 185, 129, 0.1);
+    }
+
+    .status-btn.inactive {
+      color: #ef4444;
+      border-color: #ef4444;
+    }
+
+    .status-btn.inactive:hover {
+      background: rgba(239, 68, 68, 0.1);
     }
 
     .save-btn {

@@ -25,6 +25,7 @@ export interface Player {
   id: string
   name: string
   balance: number
+  isActive: boolean
 }
 
 export interface GameSession {
