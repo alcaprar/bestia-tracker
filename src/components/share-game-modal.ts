@@ -38,6 +38,9 @@ export class ShareGameModal extends LitElement {
   @state()
   private showTechnicalDetails = false
 
+  @state()
+  private showLongLink = false
+
   updated() {
     if (this.showModal && !this.qrCodeDataUrl && !this.qrError && this.shareUrl) {
       this.calculateDataSizes()
@@ -50,12 +53,7 @@ export class ShareGameModal extends LitElement {
   private async generateShortUrl(): Promise<void> {
     if (this.shortUrl) return // Already generated
 
-    // Only generate short URL if the original URL exceeds QR code limits
-    if (this.compressedSize <= 2953) {
-      this.shortUrl = this.shareUrl
-      return
-    }
-
+    // Always try to generate short URL
     this.isGeneratingShortUrl = true
     try {
       // Try using TinyURL API endpoint
@@ -132,8 +130,8 @@ export class ShareGameModal extends LitElement {
   }
 
   private copyToClipboard(): void {
-    // Copy the short URL if available, otherwise the full URL
-    const urlToCopy = this.shortUrl || this.shareUrl
+    // Copy the currently displayed URL (based on toggle)
+    const urlToCopy = this.showLongLink ? this.shareUrl : (this.shortUrl || this.shareUrl)
     navigator.clipboard.writeText(urlToCopy)
     this.copied = true
     setTimeout(() => {
@@ -154,6 +152,7 @@ export class ShareGameModal extends LitElement {
     this.qrError = ''
     this.shortUrl = ''
     this.showTechnicalDetails = false
+    this.showLongLink = false
   }
 
   closeModal(): void {
@@ -183,11 +182,16 @@ export class ShareGameModal extends LitElement {
               <h3>Link di Condivisione</h3>
               ${this.isGeneratingShortUrl ? html`<div class="loading">Generazione link breve...</div>` : ''}
               <div class="link-input-group">
-                <input type="text" .value=${this.shortUrl || this.shareUrl} readonly class="share-link" />
+                <input type="text" .value=${this.showLongLink ? this.shareUrl : (this.shortUrl || this.shareUrl)} readonly class="share-link" />
                 <button class="copy-btn ${this.copied ? 'copied' : ''}" @click=${this.copyToClipboard}>
                   ${this.copied ? '✓ Copiato' : '📋 Copia'}
                 </button>
               </div>
+              ${this.shortUrl && this.shortUrl !== this.shareUrl
+                ? html`<button class="toggle-link-btn" @click=${() => (this.showLongLink = !this.showLongLink)}>
+                    ${this.showLongLink ? '🔒 Link breve' : '🔓 Link lungo (fallback)'}
+                  </button>`
+                : ''}
               <p class="help-text">Condividi questo link per permettere agli altri di importare la partita</p>
             </div>
 
@@ -594,6 +598,24 @@ export class ShareGameModal extends LitElement {
 
     .copy-btn.copied {
       background: #10b981;
+    }
+
+    .toggle-link-btn {
+      align-self: flex-start;
+      padding: 0.5rem 1rem;
+      background: transparent;
+      color: var(--primary);
+      border: 1px solid var(--primary);
+      border-radius: 0.375rem;
+      font-size: 0.875rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .toggle-link-btn:hover {
+      background: var(--primary);
+      color: white;
     }
 
     .help-text {
