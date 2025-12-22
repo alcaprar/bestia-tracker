@@ -2,6 +2,7 @@ import { LitElement, css, html } from 'lit'
 import { customElement, state } from 'lit/decorators.js'
 import type { GameSession } from './types.js'
 import { StorageService } from './storage.js'
+import { getShareUrl, decodeGameFromSharing } from './utils/sharing.js'
 import './components/game-setup.js'
 import './components/player-list.js'
 import './components/game-actions.js'
@@ -9,6 +10,7 @@ import './components/game-history.js'
 import './components/game-settings.js'
 import './components/game-stats.js'
 import './components/games-list.js'
+import './components/share-game-modal.js'
 
 type TabType = 'record' | 'history' | 'settings' | 'statistics'
 type Route = 'games' | 'game-new' | 'game-play'
@@ -27,17 +29,69 @@ export class BestiaApp extends LitElement {
   @state()
   private allGames = StorageService.getAllGames()
 
+  @state()
+  private currentShareUrl: string = ''
+
   private boundHandleRouteChange = () => this.handleRouteChange()
 
   connectedCallback() {
     super.connectedCallback()
     window.addEventListener('hashchange', this.boundHandleRouteChange)
+
+    // Handle shared games from query parameter
+    this.handleSharedGame()
+
     this.handleRouteChange()
   }
 
   disconnectedCallback() {
     super.disconnectedCallback()
     window.removeEventListener('hashchange', this.boundHandleRouteChange)
+  }
+
+  private handleSharedGame(): void {
+    // Check if there's a share query parameter
+    const params = new URLSearchParams(window.location.search)
+    const shareParam = params.get('share')
+
+    if (shareParam) {
+      // Decode the shared game
+      const sharedSession = decodeGameFromSharing(shareParam)
+      if (sharedSession) {
+        // Check if a game with this ID already exists
+        const existingGame = StorageService.getGameById(sharedSession.id)
+
+        let importedSession: GameSession
+        let isUpdate = false
+
+        if (existingGame) {
+          // Update existing game
+          importedSession = {
+            ...sharedSession,
+            updatedAt: Date.now(),
+          }
+          isUpdate = true
+        } else {
+          // Create new game with same ID as shared game
+          importedSession = {
+            ...sharedSession,
+            createdAt: Date.now(),
+            updatedAt: Date.now(),
+          }
+        }
+
+        StorageService.saveSession(importedSession)
+        this.allGames = StorageService.getAllGames()
+
+        // Clean up the URL to remove the share parameter
+        window.history.replaceState({}, document.title, window.location.pathname)
+
+        // Show a success message
+        const action = isUpdate ? 'aggiornata' : 'importata'
+        const playerNames = importedSession.players.map((p) => p.name).join(', ')
+        alert(`Partita ${action} con successo! "${playerNames}"`)
+      }
+    }
   }
 
   private handleRouteChange(): void {
@@ -160,6 +214,17 @@ export class BestiaApp extends LitElement {
     }
   }
 
+  private openShareModal(): void {
+    if (this.session) {
+      this.currentShareUrl = getShareUrl(this.session)
+      // Get modal reference using querySelector
+      const modal = this.shadowRoot?.querySelector('share-game-modal') as any
+      if (modal) {
+        modal.openModal()
+      }
+    }
+  }
+
   render() {
     // Games list route
     if (this.currentRoute === 'games') {
@@ -193,10 +258,13 @@ export class BestiaApp extends LitElement {
     // Game play route
     if (this.currentRoute === 'game-play' && this.session) {
       return html`
+        <share-game-modal .shareUrl=${this.currentShareUrl}></share-game-modal>
+
         <div class="container">
           <header class="header">
             <button class="back-btn" @click=${() => { window.location.hash = '/games' }}>← Giochi</button>
             <h1>Bestia</h1>
+            <button class="share-btn" @click=${this.openShareModal}>📤 Condividi</button>
           </header>
 
           <div class="game-info">
@@ -368,6 +436,23 @@ export class BestiaApp extends LitElement {
     .back-btn:hover {
       background: var(--primary);
       color: white;
+    }
+
+    .share-btn {
+      padding: 0.5rem 1rem;
+      background: var(--primary);
+      color: white;
+      border: none;
+      border-radius: 0.5rem;
+      font-size: 0.875rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s;
+      white-space: nowrap;
+    }
+
+    .share-btn:hover {
+      background: #2563eb;
     }
 
     .game-info {
