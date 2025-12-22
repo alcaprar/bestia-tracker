@@ -1,7 +1,10 @@
+import pako from 'pako'
 import type { GameSession } from '../types.js'
 
 /**
- * Encodes a game session to a base64 string for sharing via URL
+ * Encodes a game session to a compressed base64 string for sharing via URL
+ * Uses gzip compression to significantly reduce data size
+ * Returns URL-safe base64 encoding
  */
 export function encodeGameForSharing(session: GameSession): string {
   const sessionData = {
@@ -18,16 +21,39 @@ export function encodeGameForSharing(session: GameSession): string {
   }
 
   const jsonString = JSON.stringify(sessionData)
-  return btoa(jsonString)
+
+  // Compress with gzip
+  const compressed = pako.gzip(jsonString)
+
+  // Convert to base64
+  const binaryString = String.fromCharCode.apply(null, Array.from(compressed))
+  const base64 = btoa(binaryString)
+
+  // Convert to URL-safe base64 (replace + with -, / with _, remove padding =)
+  return base64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '')
 }
 
 /**
- * Decodes a base64 string back to a game session
+ * Decodes a compressed base64 string back to a game session
  */
 export function decodeGameFromSharing(encodedData: string): GameSession | null {
   try {
-    const jsonString = atob(encodedData)
-    const sessionData = JSON.parse(jsonString)
+    // Convert URL-safe base64 back to standard base64
+    // Replace - with +, _ with /, and add padding back
+    let base64 = encodedData.replace(/-/g, '+').replace(/_/g, '/')
+    const padding = (4 - (base64.length % 4)) % 4
+    base64 += '='.repeat(padding)
+
+    // Decode base64
+    const binaryString = atob(base64)
+    const bytes = new Uint8Array(binaryString.length)
+    for (let i = 0; i < binaryString.length; i++) {
+      bytes[i] = binaryString.charCodeAt(i)
+    }
+
+    // Decompress gzip
+    const decompressed = pako.ungzip(bytes, { to: 'string' })
+    const sessionData = JSON.parse(decompressed)
 
     // Convert metadata Maps back from JSON
     const session: GameSession = {
