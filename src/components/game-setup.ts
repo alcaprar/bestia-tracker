@@ -87,6 +87,7 @@ export class GameSetup extends LitElement {
               <li><strong>Gioco d'azzardo illegale:</strong> Ricorda che il gioco d'azzardo è illegale in molte giurisdizioni. Anche se Bestia potrebbe sembrare un gioco legale, verifica le leggi locali prima di giocare con denaro reale.</li>
               <li><strong>Gioca responsabilmente:</strong> Stabilisci un limite di scommessa prima di iniziare e non superarlo.</li>
               <li><strong>Non sei obbligato:</strong> Nessuno è obbligato a giocare. Se il gioco cessa di essere divertente, smetti di giocare.</li>
+              <li><strong>Dati locali:</strong> Tutti i dati del gioco vengono salvati localmente nel tuo browser e non vengono inviati a server remoti. Se cancelli i dati del browser, la cronologia dei giochi andrà persa permanentemente. Esegui backup manualmente se desideri conservare i dati.</li>
               <li><strong>Nessuna responsabilità:</strong> Gli sviluppatori di questa app non sono responsabili per perdite monetarie, conseguenze legali o danni derivanti dall'uso di questa applicazione.</li>
             </ul>
             <p class="disclaimer-footer">Utilizzando questa app, accetti che hai letto e compreso questa dichiarazione.</p>

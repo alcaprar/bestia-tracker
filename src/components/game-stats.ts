@@ -42,24 +42,28 @@ export class GameStats extends LitElement {
     const canvas = this.shadowRoot?.querySelector('#balanceProgressionChart') as HTMLCanvasElement
     if (!canvas) return
 
-    // Get all rounds in order
-    const allRounds = this.session!.events.filter((e) => e.type === 'round_end')
-    const labels = allRounds.map((_, i) => `Giro ${i + 1}`)
+    // Get all events in order (not just round_end)
+    const allEvents = this.session!.events
+    const labels = allEvents.map((e, i) => {
+      if (e.type === 'round_end') return `Giro ${i + 1}`
+      if (e.type === 'dealer_pay') return 'Dealer'
+      return 'Giro Chiuso'
+    })
 
     const datasets = this.session!.players
       .filter((p) => p.isActive)
       .map((player, index) => {
-        // Get full progression with all rounds, filling in with previous balance when player didn't participate
+        // Get full progression with all events
         const fullProgression: number[] = []
         let lastBalance = 0
 
-        for (const round of allRounds) {
-          const transaction = round.transactions.find((t) => t.playerId === player.id)
+        for (const event of allEvents) {
+          const transaction = event.transactions.find((t) => t.playerId === player.id)
           if (transaction) {
             lastBalance += transaction.amount
             fullProgression.push(lastBalance)
           } else {
-            // Player didn't participate in this round, use previous balance
+            // Player didn't have a transaction in this event, use previous balance
             fullProgression.push(lastBalance)
           }
         }

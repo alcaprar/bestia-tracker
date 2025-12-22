@@ -447,15 +447,13 @@ export class StorageService {
       wins.set(player.id, 0)
     })
 
-    // Count round_end events where player has positive transaction (won money)
+    // Count all events where player has positive transaction (won money)
     for (const event of session.events) {
-      if (event.type === 'round_end') {
-        event.transactions.forEach(({ playerId, amount }) => {
-          if (amount > 0) {
-            wins.set(playerId, (wins.get(playerId) || 0) + 1)
-          }
-        })
-      }
+      event.transactions.forEach(({ playerId, amount }) => {
+        if (amount > 0) {
+          wins.set(playerId, (wins.get(playerId) || 0) + 1)
+        }
+      })
     }
 
     return wins
@@ -469,13 +467,11 @@ export class StorageService {
       roundsPlayed.set(player.id, 0)
     })
 
-    // Count round_end events where player has any transaction
+    // Count all events where player has any transaction
     for (const event of session.events) {
-      if (event.type === 'round_end') {
-        event.transactions.forEach(({ playerId }) => {
-          roundsPlayed.set(playerId, (roundsPlayed.get(playerId) || 0) + 1)
-        })
-      }
+      event.transactions.forEach(({ playerId }) => {
+        roundsPlayed.set(playerId, (roundsPlayed.get(playerId) || 0) + 1)
+      })
     }
 
     return roundsPlayed
@@ -489,15 +485,13 @@ export class StorageService {
       losses.set(player.id, 0)
     })
 
-    // Count round_end events where player has negative transaction (lost money)
+    // Count all events where player has negative transaction (lost money)
     for (const event of session.events) {
-      if (event.type === 'round_end') {
-        event.transactions.forEach(({ playerId, amount }) => {
-          if (amount < 0) {
-            losses.set(playerId, (losses.get(playerId) || 0) + 1)
-          }
-        })
-      }
+      event.transactions.forEach(({ playerId, amount }) => {
+        if (amount < 0) {
+          losses.set(playerId, (losses.get(playerId) || 0) + 1)
+        }
+      })
     }
 
     return losses

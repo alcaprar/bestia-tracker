@@ -52,6 +52,9 @@ export class GamesList extends LitElement {
     return html`
       <div class="games-container">
         <h2>Le Mie Partite</h2>
+        <div class="storage-notice">
+          <p>💾 <strong>Nota:</strong> I dati delle partite sono salvati localmente nel tuo browser. Se cancelli i dati del browser, tutte le partite andranno perse.</p>
+        </div>
         <div class="games-table">
           <div class="table-header">
             <div class="col-date">Data Inizio</div>
@@ -100,6 +103,20 @@ export class GamesList extends LitElement {
       font-size: 1.875rem;
       font-weight: 700;
       color: #111827;
+    }
+
+    .storage-notice {
+      margin-bottom: 1.5rem;
+      padding: 1rem;
+      background-color: #fef3c7;
+      border-left: 4px solid #f59e0b;
+      border-radius: 0.375rem;
+    }
+
+    .storage-notice p {
+      margin: 0;
+      color: #78350f;
+      font-size: 0.95rem;
     }
 
     .empty-state {
