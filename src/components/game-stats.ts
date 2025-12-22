@@ -29,6 +29,10 @@ export class GameStats extends LitElement {
     this.charts.clear()
   }
 
+  private getCurrency(): string {
+    return this.session?.currency || '€'
+  }
+
   private createCharts(): void {
     if (!this.session) return
 
@@ -110,7 +114,7 @@ export class GameStats extends LitElement {
             beginAtZero: true,
             title: {
               display: true,
-              text: 'Bilancio (€)',
+              text: `Bilancio (${this.getCurrency()})`,
             },
           },
         },
@@ -141,7 +145,7 @@ export class GameStats extends LitElement {
         labels: activePlayersWithBalances.map((p) => p.name),
         datasets: [
           {
-            label: 'Bilancio Attuale (€)',
+            label: `Bilancio Attuale (${this.getCurrency()})`,
             data: activePlayersWithBalances.map((p) => p.balance),
             backgroundColor: colors,
             borderColor: colors,
@@ -167,7 +171,7 @@ export class GameStats extends LitElement {
           x: {
             title: {
               display: true,
-              text: 'Bilancio (€)',
+              text: `Bilancio (${this.getCurrency()})`,
             },
           },
         },

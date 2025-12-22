@@ -16,6 +16,9 @@ export class GameInput extends LitElement {
   @property({ type: String })
   dealer: string = ''
 
+  @property({ type: String })
+  currency: string = '€'
+
   @state()
   private playerSelection: Map<string, 'none' | '1' | '2' | '3' | 'bestia'> = new Map()
 
@@ -166,7 +169,7 @@ export class GameInput extends LitElement {
           </div>
           <div class="header-info">
             <span class="label">Banco Attuale:</span>
-            <span class="value">€${this.currentPot.toFixed(2)}</span>
+            <span class="value">${this.currency}${this.currentPot.toFixed(2)}</span>
           </div>
         </div>
 
@@ -203,7 +206,7 @@ export class GameInput extends LitElement {
                 ${payouts.get(player.id) !== 0
                   ? html`
                       <div class="payout ${payouts.get(player.id)! > 0 ? 'win' : 'loss'}">
-                        ${payouts.get(player.id)! > 0 ? '+' : ''}€${Math.abs(payouts.get(player.id)!).toFixed(2)}
+                        ${payouts.get(player.id)! > 0 ? '+' : ''}${this.currency}${Math.abs(payouts.get(player.id)!).toFixed(2)}
                       </div>
                     `
                   : ''}

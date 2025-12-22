@@ -53,7 +53,7 @@ export class GameSetup extends LitElement {
           <h1>Configurazione Partita Bestia</h1>
 
           <div class="form-section">
-            <label>Piatto - €</label>
+            <label>Piatto</label>
             <input
               type="number"
               step="0.01"

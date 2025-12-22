@@ -371,6 +371,12 @@ export class StorageService {
     return session
   }
 
+  static updateCurrency(session: GameSession, newCurrency: string): GameSession {
+    session.currency = newCurrency
+    this.saveSession(session)
+    return session
+  }
+
   static updatePlayerOrder(session: GameSession, playerIds: string[]): GameSession {
     // Reorder players based on the new order
     const playerMap = new Map(session.players.map((p) => [p.id, p]))

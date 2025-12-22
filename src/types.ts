@@ -37,4 +37,5 @@ export interface GameSession {
   events: GameEvent[]
   createdAt: number
   updatedAt: number
+  currency?: string // currency symbol (defaults to '€' if undefined)
 }

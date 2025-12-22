@@ -11,8 +11,14 @@ export class GameSettings extends LitElement {
   @property({ type: Number })
   piatto: number = 0.3
 
+  @property({ type: String })
+  currency: string = '€'
+
   @state()
   private editedPiatto: number = 0.3
+
+  @state()
+  private editedCurrency: string = '€'
 
   @state()
   private playerOrder: Player[] = []
@@ -26,6 +32,7 @@ export class GameSettings extends LitElement {
   connectedCallback() {
     super.connectedCallback()
     this.editedPiatto = this.piatto
+    this.editedCurrency = this.currency
     this.playerOrder = [...this.players]
   }
 
@@ -39,6 +46,10 @@ export class GameSettings extends LitElement {
     if (changedProperties.has('piatto')) {
       this.editedPiatto = this.piatto
     }
+    // Sync editedCurrency whenever currency property changes
+    if (changedProperties.has('currency')) {
+      this.editedCurrency = this.currency
+    }
   }
 
   private updatePiatto(e: Event): void {
@@ -50,6 +61,19 @@ export class GameSettings extends LitElement {
     this.dispatchEvent(
       new CustomEvent('piatto-changed', {
         detail: { piatto: this.editedPiatto },
+      })
+    )
+  }
+
+  private updateCurrency(e: Event): void {
+    const input = e.target as HTMLInputElement
+    this.editedCurrency = input.value
+  }
+
+  private saveCurrency(): void {
+    this.dispatchEvent(
+      new CustomEvent('currency-changed', {
+        detail: { currency: this.editedCurrency },
       })
     )
   }
@@ -111,7 +135,7 @@ export class GameSettings extends LitElement {
         <div class="settings-section">
           <h3>Piatto Base</h3>
           <div class="piatto-input-group">
-            <label for="piatto-input">€</label>
+            <label for="piatto-input">${this.editedCurrency}</label>
             <input
               id="piatto-input"
               type="number"
@@ -123,6 +147,23 @@ export class GameSettings extends LitElement {
             />
             <button class="save-btn" @click=${this.savePiatto}>Salva</button>
           </div>
+        </div>
+
+        <div class="settings-section">
+          <h3>Simbolo Valuta</h3>
+          <div class="currency-input-group">
+            <input
+              id="currency-input"
+              type="text"
+              maxlength="5"
+              .value=${this.editedCurrency}
+              @change=${this.updateCurrency}
+              @input=${this.updateCurrency}
+              placeholder="€"
+            />
+            <button class="save-btn" @click=${this.saveCurrency}>Salva</button>
+          </div>
+          <p class="help-text">Inserisci il simbolo che vuoi usare (€, $, £, pts, ecc.)</p>
         </div>
 
         <div class="settings-section">
@@ -233,6 +274,28 @@ export class GameSettings extends LitElement {
     }
 
     .piatto-input-group input:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+    }
+
+    .currency-input-group {
+      display: flex;
+      gap: 0.5rem;
+      align-items: center;
+      margin-bottom: 1rem;
+    }
+
+    .currency-input-group input {
+      padding: 0.5rem;
+      border: 2px solid var(--gray-300);
+      border-radius: 0.375rem;
+      font-size: 1rem;
+      flex: 1;
+      max-width: 120px;
+    }
+
+    .currency-input-group input:focus {
       outline: none;
       border-color: var(--primary);
       box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);

@@ -10,6 +10,9 @@ export class GameHistory extends LitElement {
   @property({ type: Array })
   players: Player[] = []
 
+  @property({ type: String })
+  currency: string = '€'
+
   private formatTime(timestamp: number): string {
     const date = new Date(timestamp)
     return date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
@@ -88,7 +91,7 @@ export class GameHistory extends LitElement {
     if (!transaction) return '—'
     const amount = transaction.amount
     const sign = amount > 0 ? '+' : ''
-    return `${sign}€${Math.abs(amount).toFixed(2)}`
+    return `${sign}${this.currency}${Math.abs(amount).toFixed(2)}`
   }
 
   private getAmountClass(event: GameEvent, playerId: string): string {

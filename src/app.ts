@@ -213,6 +213,14 @@ export class BestiaApp extends LitElement {
     }
   }
 
+  private handleCurrencyChanged(event: CustomEvent<{ currency: string }>): void {
+    if (this.session) {
+      const updatedSession = StorageService.updateCurrency(this.session, event.detail.currency)
+      this.session = { ...updatedSession }
+      this.requestUpdate()
+    }
+  }
+
   private handlePlayerOrderChanged(event: CustomEvent<{ playerIds: string[] }>): void {
     if (this.session) {
       const updatedSession = StorageService.updatePlayerOrder(this.session, event.detail.playerIds)
@@ -308,11 +316,11 @@ export class BestiaApp extends LitElement {
             <div class="game-info">
               <div class="info-card">
                 <span class="label">Piatto</span>
-                <span class="value">€${(this.session.piatto || 0).toFixed(2)}</span>
+                <span class="value">${this.session?.currency || '€'}${(this.session.piatto || 0).toFixed(2)}</span>
               </div>
               <div class="info-card">
                 <span class="label">Banco Attuale</span>
-                <span class="value">€${StorageService.calculateCurrentPot(this.session).toFixed(2)}</span>
+                <span class="value">${this.session?.currency || '€'}${StorageService.calculateCurrentPot(this.session).toFixed(2)}</span>
               </div>
               <div class="info-card">
                 <span class="label">Mazziere</span>
@@ -327,6 +335,7 @@ export class BestiaApp extends LitElement {
             <player-list
               .players=${this.session.players}
               .balances=${StorageService.calculatePlayerBalances(this.session)}
+              .currency=${this.session?.currency || '€'}
             ></player-list>
 
             <div class="tabs-container">
@@ -366,6 +375,7 @@ export class BestiaApp extends LitElement {
                         .nextDealerId=${this.session ? StorageService.getNextDealerId(this.session) : ''}
                         .currentPot=${this.session ? StorageService.calculateCurrentPot(this.session) : 0}
                         .piatto=${this.session?.piatto || 0}
+                        .currency=${this.session?.currency || '€'}
                         @dealer-selected=${this.handleDealerSelected}
                         @round-recorded=${this.handleRoundRecorded}
                         @giro-chiuso-recorded=${this.handleGiroChiusoRecorded}
@@ -377,6 +387,7 @@ export class BestiaApp extends LitElement {
                         <game-history
                           .events=${this.session.events}
                           .players=${this.session.players}
+                          .currency=${this.session?.currency || '€'}
                           @delete-event=${this.handleDeleteEvent}
                         ></game-history>
                       `
@@ -385,7 +396,9 @@ export class BestiaApp extends LitElement {
                           <game-settings
                             .players=${this.session.players}
                             .piatto=${this.session.piatto}
+                            .currency=${this.session.currency || '€'}
                             @piatto-changed=${this.handlePiattoChanged}
+                            @currency-changed=${this.handleCurrencyChanged}
                             @player-order-changed=${this.handlePlayerOrderChanged}
                             @player-added=${this.handlePlayerAdded}
                             @player-status-changed=${this.handlePlayerStatusChanged}

@@ -22,6 +22,9 @@ export class GameActions extends LitElement {
   @property({ type: Number })
   piatto: number = 0
 
+  @property({ type: String })
+  currency: string = '€'
+
   @state()
   private step: ActionStep = 'menu'
 
@@ -203,6 +206,7 @@ export class GameActions extends LitElement {
           .piatto=${this.piatto}
           .currentPot=${this.currentPot}
           .dealer=${this.currentDealer}
+          .currency=${this.currency}
           @game-result=${this.handleRecordResult}
         ></game-input>
       </div>
@@ -254,7 +258,7 @@ export class GameActions extends LitElement {
                   <div class="manual-player-row">
                     <label class="player-label">${player.name}</label>
                     <div class="amount-input-wrapper">
-                      <span class="currency-symbol">€</span>
+                      <span class="currency-symbol">${this.currency}</span>
                       <input
                         type="number"
                         step="0.01"

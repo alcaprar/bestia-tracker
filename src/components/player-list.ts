@@ -10,6 +10,9 @@ export class PlayerList extends LitElement {
   @property({ type: Map })
   balances: Map<string, number> = new Map()
 
+  @property({ type: String })
+  currency: string = '€'
+
   render() {
     // Sort players by balance (highest first)
     const sortedPlayers = [...this.players].sort((a, b) => {
@@ -27,7 +30,7 @@ export class PlayerList extends LitElement {
               <div class="player-card ${balance > 0 ? 'winning' : balance < 0 ? 'losing' : ''}">
                 <div class="player-name">${player.name}</div>
                 <div class="player-stats">
-                  <span class="stat-value">€${balance.toFixed(2)}</span>
+                  <span class="stat-value">${this.currency}${balance.toFixed(2)}</span>
                 </div>
               </div>
             `
