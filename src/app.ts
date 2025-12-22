@@ -103,17 +103,26 @@ export class BestiaApp extends LitElement {
       this.currentRoute = 'games'
       this.session = null
       this.allGames = StorageService.getAllGames()
+      this.activeTab = 'record'
     } else if (route === 'game' && params[0] === 'new') {
       this.currentRoute = 'game-new'
       this.session = null
+      this.activeTab = 'record'
     } else if (route === 'game' && params[0]) {
       // Load specific game
       const gameId = params[0]
+      const tabParam = params[1] as TabType | undefined
       const game = StorageService.getGameById(gameId)
       if (game) {
         StorageService.setCurrentGame(gameId)
         this.session = game.session
         this.currentRoute = 'game-play'
+        // Set tab if provided, otherwise default to record
+        if (tabParam && ['record', 'history', 'settings', 'statistics'].includes(tabParam)) {
+          this.activeTab = tabParam
+        } else {
+          this.activeTab = 'record'
+        }
       } else {
         // Game not found, go back to games list
         window.location.hash = '/games'
@@ -127,6 +136,12 @@ export class BestiaApp extends LitElement {
 
   private navigateToGame(gameId: string): void {
     window.location.hash = `/game/${gameId}`
+  }
+
+  private navigateToTab(tab: TabType): void {
+    if (this.session) {
+      window.location.hash = `/game/${this.session.id}/${tab}`
+    }
   }
 
   private handleSessionCreate(event: CustomEvent<{ players: string[]; piatto: number }>): void {
@@ -291,25 +306,25 @@ export class BestiaApp extends LitElement {
             <div class="tabs-nav">
               <button
                 class="tab-btn ${this.activeTab === 'record' ? 'active' : ''}"
-                @click=${() => (this.activeTab = 'record')}
+                @click=${() => this.navigateToTab('record')}
               >
                 Registra Risultato
               </button>
               <button
                 class="tab-btn ${this.activeTab === 'history' ? 'active' : ''}"
-                @click=${() => (this.activeTab = 'history')}
+                @click=${() => this.navigateToTab('history')}
               >
                 Registro (${this.session.events.length})
               </button>
               <button
                 class="tab-btn ${this.activeTab === 'settings' ? 'active' : ''}"
-                @click=${() => (this.activeTab = 'settings')}
+                @click=${() => this.navigateToTab('settings')}
               >
                 ⚙ Impostazioni
               </button>
               <button
                 class="tab-btn ${this.activeTab === 'statistics' ? 'active' : ''}"
-                @click=${() => (this.activeTab = 'statistics')}
+                @click=${() => this.navigateToTab('statistics')}
               >
                 📊 Statistiche
               </button>
