@@ -32,6 +32,9 @@ export class BestiaApp extends LitElement {
   @state()
   private currentShareUrl: string = ''
 
+  @state()
+  private showPotInfoPopover: boolean = false
+
   private boundHandleRouteChange = () => this.handleRouteChange()
 
   connectedCallback() {
@@ -256,6 +259,14 @@ export class BestiaApp extends LitElement {
     }
   }
 
+  private togglePotInfo(): void {
+    this.showPotInfoPopover = !this.showPotInfoPopover
+  }
+
+  private closePotInfo(): void {
+    this.showPotInfoPopover = false
+  }
+
   render() {
     const footer = html`
       <footer class="footer">
@@ -318,9 +329,35 @@ export class BestiaApp extends LitElement {
                 <span class="label">Piatto</span>
                 <span class="value">${this.session?.currency || '€'}${(this.session.piatto || 0).toFixed(2)}</span>
               </div>
-              <div class="info-card">
-                <span class="label">Banco Attuale</span>
+              <div class="info-card pot-info-card">
+                <div class="info-card-header">
+                  <span class="label">Banco Attuale</span>
+                  <button
+                    class="info-icon-btn"
+                    @click=${this.togglePotInfo}
+                    title="Informazioni sulla divisione del banco"
+                  >
+                    ℹ️
+                  </button>
+                </div>
                 <span class="value">${this.session?.currency || '€'}${StorageService.calculateCurrentPot(this.session).toFixed(2)}</span>
+
+                ${this.showPotInfoPopover ? html`
+                  <div class="pot-info-popover">
+                    <button class="close-btn" @click=${this.closePotInfo}>✕</button>
+                    <h3>Divisione del Banco</h3>
+                    <ul class="pot-division-list">
+                      <li><strong>${this.session?.currency || '€'}${(StorageService.calculateCurrentPot(this.session) / 3).toFixed(2)}</strong> → una presa</li>
+                      <li><strong>${this.session?.currency || '€'}${((StorageService.calculateCurrentPot(this.session) / 3) * 2).toFixed(2)}</strong> → 2 prese</li>
+                      <li><strong>${this.session?.currency || '€'}${(StorageService.calculateCurrentPot(this.session) / 6).toFixed(2)}</strong> → una presa in due</li>
+                      <li><strong>${this.session?.currency || '€'}${(StorageService.calculateCurrentPot(this.session) / 9).toFixed(2)}</strong> → una presa in tre</li>
+                    </ul>
+                  </div>
+                ` : ''}
+
+                ${this.showPotInfoPopover ? html`
+                  <div class="popover-backdrop" @click=${this.closePotInfo}></div>
+                ` : ''}
               </div>
               <div class="info-card">
                 <span class="label">Mazziere</span>
@@ -543,6 +580,104 @@ export class BestiaApp extends LitElement {
       color: var(--primary);
     }
 
+    .pot-info-card {
+      position: relative;
+    }
+
+    .info-card-header {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      width: 100%;
+    }
+
+    .info-icon-btn {
+      background: none;
+      border: none;
+      cursor: pointer;
+      font-size: 1rem;
+      padding: 0.25rem;
+      line-height: 1;
+      opacity: 0.6;
+      transition: opacity 0.2s;
+    }
+
+    .info-icon-btn:hover {
+      opacity: 1;
+    }
+
+    .pot-info-popover {
+      position: absolute;
+      top: 100%;
+      left: 0;
+      margin-top: 0.5rem;
+      background: white;
+      border: 2px solid var(--primary);
+      border-radius: 0.5rem;
+      padding: 1.5rem;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+      z-index: 1001;
+      min-width: 280px;
+      max-width: 320px;
+    }
+
+    .pot-info-popover h3 {
+      margin: 0 0 1rem 0;
+      font-size: 1rem;
+      font-weight: 700;
+      color: var(--gray-900);
+    }
+
+    .pot-division-list {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+
+    .pot-division-list li {
+      padding: 0.5rem 0;
+      font-size: 0.875rem;
+      color: var(--gray-700);
+      border-bottom: 1px solid var(--gray-200);
+    }
+
+    .pot-division-list li:last-child {
+      border-bottom: none;
+    }
+
+    .pot-division-list strong {
+      color: var(--primary);
+      font-family: 'Monaco', 'Courier New', monospace;
+    }
+
+    .close-btn {
+      position: absolute;
+      top: 0.5rem;
+      right: 0.5rem;
+      background: none;
+      border: none;
+      font-size: 1.25rem;
+      cursor: pointer;
+      color: var(--gray-700);
+      padding: 0.25rem;
+      line-height: 1;
+      transition: color 0.2s;
+    }
+
+    .close-btn:hover {
+      color: var(--gray-900);
+    }
+
+    .popover-backdrop {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      z-index: 1000;
+      background: transparent;
+    }
+
     .tabs-container {
       margin-top: 2rem;
     }
@@ -633,6 +768,19 @@ export class BestiaApp extends LitElement {
       .tab-btn {
         padding: 0.75rem 1rem;
         font-size: 0.875rem;
+      }
+
+      .pot-info-popover {
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        margin-top: 0;
+        max-width: 90vw;
+      }
+
+      .popover-backdrop {
+        background: rgba(0, 0, 0, 0.3);
       }
     }
   `
