@@ -1,0 +1,38 @@
+/**
+ * Data types for Bestia card game tracking
+ */
+
+export type EventType = 'dealer_pay' | 'round_end' | 'giro_chiuso'
+
+export interface Transaction {
+  playerId: string
+  amount: number
+}
+
+export interface GameEvent {
+  id: string
+  type: EventType
+  timestamp: number
+  transactions: Transaction[]
+  metadata?: {
+    dealerPlayerId?: string
+    prese?: Map<string, number>
+    bestiaPlayers?: string[]
+  }
+}
+
+export interface Player {
+  id: string
+  name: string
+  balance: number
+}
+
+export interface GameSession {
+  id: string
+  piatto: number // ante amount
+  players: Player[]
+  currentDealerIndex: number
+  events: GameEvent[]
+  createdAt: number
+  updatedAt: number
+}
