@@ -3,7 +3,7 @@ import { customElement, property, state } from 'lit/decorators.js'
 import type { Player } from '../types.js'
 import './game-input.js'
 
-type ActionStep = 'menu' | 'select_dealer' | 'record_result' | 'giro_chiuso'
+type ActionStep = 'menu' | 'select_dealer' | 'record_result' | 'giro_chiuso' | 'manual_entry'
 
 @customElement('game-actions')
 export class GameActions extends LitElement {
@@ -28,6 +28,12 @@ export class GameActions extends LitElement {
   @state()
   private selectedDealerId: string = ''
 
+  @state()
+  private manualAmounts: Map<string, number> = new Map()
+
+  @state()
+  private manualDescription: string = ''
+
   connectedCallback() {
     super.connectedCallback()
     if (this.players.length > 0 && !this.selectedDealerId) {
@@ -47,6 +53,15 @@ export class GameActions extends LitElement {
 
   private selectGiroChiuso(): void {
     this.step = 'giro_chiuso'
+  }
+
+  private selectManualEntry(): void {
+    this.step = 'manual_entry'
+    // Initialize all active players with 0
+    this.manualAmounts = new Map()
+    this.players.filter((p) => p.isActive).forEach((player) => {
+      this.manualAmounts.set(player.id, 0)
+    })
   }
 
   private confirmDealer(): void {
@@ -83,6 +98,30 @@ export class GameActions extends LitElement {
     this.backToMenu()
   }
 
+  private confirmManualEntry(): void {
+    this.dispatchEvent(
+      new CustomEvent('manual-entry-recorded', {
+        detail: {
+          amounts: this.manualAmounts,
+          description: this.manualDescription || undefined,
+        },
+      })
+    )
+    this.manualAmounts = new Map()
+    this.manualDescription = ''
+    this.backToMenu()
+  }
+
+  private updateManualAmount(playerId: string, value: number): void {
+    this.manualAmounts.set(playerId, value)
+    this.requestUpdate()
+  }
+
+  private updateManualDescription(value: string): void {
+    this.manualDescription = value
+    this.requestUpdate()
+  }
+
   render() {
     if (this.step === 'menu') {
       return this.renderMenu()
@@ -92,6 +131,8 @@ export class GameActions extends LitElement {
       return this.renderRecordResult()
     } else if (this.step === 'giro_chiuso') {
       return this.renderGiroChiuso()
+    } else if (this.step === 'manual_entry') {
+      return this.renderManualEntry()
     }
   }
 
@@ -116,6 +157,12 @@ export class GameActions extends LitElement {
             <div class="action-icon">✋</div>
             <div class="action-title">Giro Chiuso</div>
             <div class="action-desc">Tutti pagano il banco</div>
+          </button>
+
+          <button class="action-btn manual-btn" @click=${this.selectManualEntry}>
+            <div class="action-icon">✏️</div>
+            <div class="action-title">Inserimento Manuale</div>
+            <div class="action-desc">Regola valori personalizzati</div>
           </button>
         </div>
       </div>
@@ -177,6 +224,77 @@ export class GameActions extends LitElement {
 
         <button class="confirm-btn giro-confirm-btn" @click=${this.confirmGiroChiuso}>
           Confirm Giro Chiuso
+        </button>
+      </div>
+    `
+  }
+
+  private renderManualEntry() {
+    const hasAnyNonZero = Array.from(this.manualAmounts.values()).some((v) => v !== 0)
+
+    return html`
+      <div class="actions-container">
+        <div class="step-header">
+          <h2>Inserimento Manuale</h2>
+          <button class="back-btn" @click=${this.backToMenu}>← Indietro</button>
+        </div>
+
+        <div class="manual-info">
+          <p>Inserisci importi personalizzati per ogni giocatore. I valori positivi sono vincite, i negativi sono perdite.</p>
+          <p>Nota: I valori non devono sommare a zero - usa questa opzione per aggiustamenti speciali.</p>
+        </div>
+
+        <div class="manual-players-grid">
+          ${this.players
+            .filter((p) => p.isActive)
+            .map(
+              (player) => {
+                const amount = this.manualAmounts.get(player.id) || 0
+                return html`
+                  <div class="manual-player-row">
+                    <label class="player-label">${player.name}</label>
+                    <div class="amount-input-wrapper">
+                      <span class="currency-symbol">€</span>
+                      <input
+                        type="number"
+                        step="0.01"
+                        .value=${amount.toString()}
+                        @input=${(e: Event) => {
+                          const value = parseFloat((e.target as HTMLInputElement).value) || 0
+                          this.updateManualAmount(player.id, value)
+                        }}
+                        class="amount-input ${amount > 0 ? 'positive' : amount < 0 ? 'negative' : ''}"
+                        placeholder="0.00"
+                      />
+                    </div>
+                    ${amount !== 0
+                      ? html`
+                          <div class="amount-preview ${amount > 0 ? 'win' : 'loss'}">
+                            ${amount > 0 ? '+' : ''}€${Math.abs(amount).toFixed(2)}
+                          </div>
+                        `
+                      : ''}
+                  </div>
+                `
+              }
+            )}
+        </div>
+
+        <div class="description-section">
+          <label for="manual-description">Nota (opzionale):</label>
+          <textarea
+            id="manual-description"
+            .value=${this.manualDescription}
+            @input=${(e: Event) => {
+              this.updateManualDescription((e.target as HTMLTextAreaElement).value)
+            }}
+            placeholder="Spiega perché è stato necessario questo aggiustamento manuale..."
+            rows="3"
+          ></textarea>
+        </div>
+
+        <button class="confirm-btn manual-confirm-btn" @click=${this.confirmManualEntry} ?disabled=${!hasAnyNonZero}>
+          Conferma Inserimento Manuale
         </button>
       </div>
     `
@@ -349,6 +467,153 @@ export class GameActions extends LitElement {
       background: #d97706;
     }
 
+    .manual-btn:hover {
+      border-color: #8b5cf6;
+    }
+
+    .manual-info {
+      padding: 1.5rem;
+      background: var(--gray-100);
+      border-radius: 0.5rem;
+      margin-bottom: 2rem;
+    }
+
+    .manual-info p {
+      margin: 0.5rem 0;
+      color: var(--gray-900);
+      line-height: 1.6;
+      font-size: 0.875rem;
+    }
+
+    .manual-players-grid {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+      margin-bottom: 2rem;
+    }
+
+    .manual-player-row {
+      display: grid;
+      grid-template-columns: 150px 1fr auto;
+      align-items: center;
+      gap: 1rem;
+      padding: 1rem;
+      background: var(--gray-100);
+      border-radius: 0.5rem;
+    }
+
+    .player-label {
+      font-weight: 700;
+      color: var(--gray-900);
+      font-size: 1rem;
+    }
+
+    .amount-input-wrapper {
+      position: relative;
+      display: flex;
+      align-items: center;
+    }
+
+    .currency-symbol {
+      position: absolute;
+      left: 1rem;
+      font-weight: 600;
+      color: var(--gray-700);
+      pointer-events: none;
+    }
+
+    .amount-input {
+      width: 100%;
+      padding: 0.75rem 0.75rem 0.75rem 2rem;
+      border: 2px solid var(--gray-200);
+      border-radius: 0.5rem;
+      font-size: 1rem;
+      font-family: 'Monaco', 'Courier New', monospace;
+      font-weight: 600;
+      transition: all 0.2s;
+    }
+
+    .amount-input:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+    }
+
+    .amount-input.positive {
+      border-color: #10b981;
+      background: #f0fdf4;
+      color: #15803d;
+    }
+
+    .amount-input.negative {
+      border-color: #ef4444;
+      background: #fef2f2;
+      color: #991b1b;
+    }
+
+    .amount-preview {
+      font-weight: 700;
+      font-size: 0.875rem;
+      padding: 0.5rem 1rem;
+      border-radius: 0.375rem;
+      font-family: 'Monaco', 'Courier New', monospace;
+      min-width: 100px;
+      text-align: center;
+    }
+
+    .amount-preview.win {
+      background: #dcfce7;
+      color: #15803d;
+    }
+
+    .amount-preview.loss {
+      background: #fee2e2;
+      color: #991b1b;
+    }
+
+    .description-section {
+      margin-bottom: 2rem;
+    }
+
+    .description-section label {
+      display: block;
+      font-weight: 600;
+      color: var(--gray-900);
+      margin-bottom: 0.5rem;
+      font-size: 0.875rem;
+    }
+
+    .description-section textarea {
+      width: 100%;
+      padding: 0.75rem;
+      border: 2px solid var(--gray-200);
+      border-radius: 0.5rem;
+      font-size: 0.875rem;
+      font-family: inherit;
+      resize: vertical;
+      color: var(--gray-900);
+    }
+
+    .description-section textarea:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+    }
+
+    .manual-confirm-btn {
+      background: #8b5cf6;
+    }
+
+    .manual-confirm-btn:hover:not(:disabled) {
+      background: #7c3aed;
+    }
+
+    .manual-confirm-btn:disabled {
+      background: #d1d5db;
+      cursor: not-allowed;
+      opacity: 0.6;
+    }
+
     @media (max-width: 640px) {
       .actions-container {
         padding: 1.5rem;
@@ -374,6 +639,15 @@ export class GameActions extends LitElement {
         flex-direction: column;
         align-items: flex-start;
         gap: 1rem;
+      }
+
+      .manual-player-row {
+        grid-template-columns: 1fr;
+        gap: 0.75rem;
+      }
+
+      .amount-preview {
+        justify-self: start;
       }
     }
   `

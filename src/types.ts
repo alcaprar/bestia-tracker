@@ -2,7 +2,7 @@
  * Data types for Bestia card game tracking
  */
 
-export type EventType = 'dealer_pay' | 'round_end' | 'giro_chiuso'
+export type EventType = 'dealer_pay' | 'round_end' | 'giro_chiuso' | 'manual_entry'
 
 export interface Transaction {
   playerId: string
@@ -18,6 +18,7 @@ export interface GameEvent {
     dealerPlayerId?: string
     prese?: Map<string, number>
     bestiaPlayers?: string[]
+    description?: string
   }
 }
 

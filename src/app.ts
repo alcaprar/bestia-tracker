@@ -187,6 +187,14 @@ export class BestiaApp extends LitElement {
     }
   }
 
+  private handleManualEntryRecorded(event: CustomEvent<{ amounts: Map<string, number>; description?: string }>): void {
+    if (this.session) {
+      const updatedSession = StorageService.recordManualEntry(this.session, event.detail.amounts, event.detail.description)
+      this.session = { ...updatedSession }
+      this.requestUpdate()
+    }
+  }
+
   private handleDeleteEvent(event: CustomEvent<{ eventId: string }>): void {
     if (this.session) {
       const eventId = event.detail.eventId
@@ -361,6 +369,7 @@ export class BestiaApp extends LitElement {
                         @dealer-selected=${this.handleDealerSelected}
                         @round-recorded=${this.handleRoundRecorded}
                         @giro-chiuso-recorded=${this.handleGiroChiusoRecorded}
+                        @manual-entry-recorded=${this.handleManualEntryRecorded}
                       ></game-actions>
                     `
                   : this.activeTab === 'history'

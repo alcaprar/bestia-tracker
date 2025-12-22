@@ -284,6 +284,32 @@ export class StorageService {
     return session
   }
 
+  static recordManualEntry(
+    session: GameSession,
+    playerAmounts: Map<string, number>,
+    description?: string
+  ): GameSession {
+    // Create transactions from the manual amounts, filtering out zero values
+    const transactions: Transaction[] = Array.from(playerAmounts.entries())
+      .filter(([_, amount]) => amount !== 0)
+      .map(([playerId, amount]) => ({
+        playerId,
+        amount,
+      }))
+
+    const event: GameEvent = {
+      id: Math.random().toString(36).substr(2, 9),
+      type: 'manual_entry',
+      timestamp: Date.now(),
+      transactions,
+      metadata: description ? { description } : undefined,
+    }
+
+    session.events.push(event)
+    this.saveSession(session)
+    return session
+  }
+
   static calculateCurrentPot(session: GameSession): number {
     // Pot is the negative sum of all transactions
     // (payments are negative, so summing them gives us the pot amount)

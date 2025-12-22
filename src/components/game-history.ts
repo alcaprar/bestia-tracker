@@ -23,6 +23,8 @@ export class GameHistory extends LitElement {
       return 'Giro Chiuso'
     } else if (event.type === 'dealer_pay') {
       return 'Piatto Mazziere'
+    } else if (event.type === 'manual_entry') {
+      return 'Inserimento Manuale'
     }
     return event.type
   }
@@ -189,6 +191,11 @@ export class GameHistory extends LitElement {
 
     .event-row.giro_chiuso .event-col {
       color: #ea580c;
+      font-weight: 700;
+    }
+
+    .event-row.manual_entry .event-col {
+      color: #8b5cf6;
       font-weight: 700;
     }
 
