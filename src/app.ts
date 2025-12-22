@@ -295,6 +295,10 @@ export class BestiaApp extends LitElement {
               <span class="label">Mazziere</span>
               <span class="value">${this.session ? this.session.players.find((p) => p.id === StorageService.getCurrentDealerId(this.session!))?.name || 'Unknown' : 'Unknown'}</span>
             </div>
+            <div class="info-card">
+              <span class="label">Inizio Partita</span>
+              <span class="value">${this.session ? new Date(this.session.createdAt).toLocaleString('it-IT', { dateStyle: 'short', timeStyle: 'short' }) : ''}</span>
+            </div>
           </div>
 
           <player-list
