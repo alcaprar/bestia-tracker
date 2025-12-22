@@ -8,8 +8,10 @@ import './components/game-actions.js'
 import './components/game-history.js'
 import './components/game-settings.js'
 import './components/game-stats.js'
+import './components/games-list.js'
 
 type TabType = 'record' | 'history' | 'settings' | 'statistics'
+type Route = 'games' | 'game-new' | 'game-play'
 
 @customElement('bestia-app')
 export class BestiaApp extends LitElement {
@@ -17,36 +19,77 @@ export class BestiaApp extends LitElement {
   private session: GameSession | null = null
 
   @state()
-  private showSetup = false
+  private activeTab: TabType = 'record'
 
   @state()
-  private activeTab: TabType = 'record'
+  private currentRoute: Route = 'games'
+
+  @state()
+  private allGames = StorageService.getAllGames()
+
+  private boundHandleRouteChange = () => this.handleRouteChange()
 
   connectedCallback() {
     super.connectedCallback()
-    this.loadSession()
+    window.addEventListener('hashchange', this.boundHandleRouteChange)
+    this.handleRouteChange()
   }
 
-  private loadSession(): void {
-    const saved = StorageService.getSession()
-    if (saved) {
-      this.session = saved
-      this.showSetup = false
-    } else {
-      this.showSetup = true
+  disconnectedCallback() {
+    super.disconnectedCallback()
+    window.removeEventListener('hashchange', this.boundHandleRouteChange)
+  }
+
+  private handleRouteChange(): void {
+    const hash = window.location.hash.slice(1) || 'games'
+    const parts = hash.split('/').filter((p) => p)
+    const [route, ...params] = parts
+
+    if (route === 'games') {
+      this.currentRoute = 'games'
+      this.session = null
+      this.allGames = StorageService.getAllGames()
+    } else if (route === 'game' && params[0] === 'new') {
+      this.currentRoute = 'game-new'
+      this.session = null
+    } else if (route === 'game' && params[0]) {
+      // Load specific game
+      const gameId = params[0]
+      const game = StorageService.getGameById(gameId)
+      if (game) {
+        StorageService.setCurrentGame(gameId)
+        this.session = game.session
+        this.currentRoute = 'game-play'
+      } else {
+        // Game not found, go back to games list
+        window.location.hash = '/games'
+      }
     }
+  }
+
+  private navigateToNewGame(): void {
+    window.location.hash = '/game/new'
+  }
+
+  private navigateToGame(gameId: string): void {
+    window.location.hash = `/game/${gameId}`
   }
 
   private handleSessionCreate(event: CustomEvent<{ players: string[]; piatto: number }>): void {
     const { players, piatto } = event.detail
-    this.session = StorageService.createNewSession(players, piatto)
-    this.showSetup = false
+    const newSession = StorageService.createNewSession(players, piatto)
+    // Update the URL to reflect the new game
+    if (newSession) {
+      window.location.hash = `/game/${newSession.id}`
+    }
   }
 
   private handleNewGame(): void {
-    StorageService.clearSession()
-    this.session = null
-    this.showSetup = true
+    this.navigateToNewGame()
+  }
+
+  private handleGamesListSelection(event: CustomEvent<{ gameId: string }>): void {
+    this.navigateToGame(event.detail.gameId)
   }
 
   private handleDealerSelected(event: CustomEvent<{ dealerId: string; dealerName: string }>): void {
@@ -118,105 +161,136 @@ export class BestiaApp extends LitElement {
   }
 
   render() {
-    if (this.showSetup || !this.session) {
-      return html`<game-setup @create-session=${this.handleSessionCreate}></game-setup>`
+    // Games list route
+    if (this.currentRoute === 'games') {
+      return html`
+        <div class="container">
+          <header class="header">
+            <h1>Bestia</h1>
+            <button class="new-game-btn" @click=${this.handleNewGame}>+ Nuova Partita</button>
+          </header>
+          <games-list
+            .games=${this.allGames}
+            @game-selected=${this.handleGamesListSelection}
+          ></games-list>
+        </div>
+      `
     }
 
-    return html`
-      <div class="container">
-        <header class="header">
-          <h1>Bestia</h1>
-          <button class="new-game-btn" @click=${this.handleNewGame}>Nuova Partita</button>
-        </header>
-
-        <div class="game-info">
-          <div class="info-card">
-            <span class="label">Piatto</span>
-            <span class="value">€${(this.session.piatto || 0).toFixed(2)}</span>
-          </div>
-          <div class="info-card">
-            <span class="label">Banco Attuale</span>
-            <span class="value">€${StorageService.calculateCurrentPot(this.session).toFixed(2)}</span>
-          </div>
-          <div class="info-card">
-            <span class="label">Mazziere</span>
-            <span class="value">${this.session ? this.session.players.find((p) => p.id === StorageService.getCurrentDealerId(this.session!))?.name || 'Unknown' : 'Unknown'}</span>
-          </div>
+    // New game setup route
+    if (this.currentRoute === 'game-new') {
+      return html`
+        <div class="container">
+          <header class="header">
+            <button class="back-btn" @click=${() => { window.location.hash = '/games' }}>← Giochi</button>
+            <h1>Nuova Partita</h1>
+          </header>
         </div>
+        <game-setup @create-session=${this.handleSessionCreate}></game-setup>
+      `
+    }
 
-        <player-list
-          .players=${this.session.players}
-          .balances=${StorageService.calculatePlayerBalances(this.session)}
-        ></player-list>
+    // Game play route
+    if (this.currentRoute === 'game-play' && this.session) {
+      return html`
+        <div class="container">
+          <header class="header">
+            <button class="back-btn" @click=${() => { window.location.hash = '/games' }}>← Giochi</button>
+            <h1>Bestia</h1>
+          </header>
 
-        <div class="tabs-container">
-          <div class="tabs-nav">
-            <button
-              class="tab-btn ${this.activeTab === 'record' ? 'active' : ''}"
-              @click=${() => (this.activeTab = 'record')}
-            >
-              Registra Risultato
-            </button>
-            <button
-              class="tab-btn ${this.activeTab === 'history' ? 'active' : ''}"
-              @click=${() => (this.activeTab = 'history')}
-            >
-              Registro (${this.session.events.length})
-            </button>
-            <button
-              class="tab-btn ${this.activeTab === 'settings' ? 'active' : ''}"
-              @click=${() => (this.activeTab = 'settings')}
-            >
-              ⚙ Impostazioni
-            </button>
-            <button
-              class="tab-btn ${this.activeTab === 'statistics' ? 'active' : ''}"
-              @click=${() => (this.activeTab = 'statistics')}
-            >
-              📊 Statistiche
-            </button>
+          <div class="game-info">
+            <div class="info-card">
+              <span class="label">Piatto</span>
+              <span class="value">€${(this.session.piatto || 0).toFixed(2)}</span>
+            </div>
+            <div class="info-card">
+              <span class="label">Banco Attuale</span>
+              <span class="value">€${StorageService.calculateCurrentPot(this.session).toFixed(2)}</span>
+            </div>
+            <div class="info-card">
+              <span class="label">Mazziere</span>
+              <span class="value">${this.session ? this.session.players.find((p) => p.id === StorageService.getCurrentDealerId(this.session!))?.name || 'Unknown' : 'Unknown'}</span>
+            </div>
           </div>
 
-          <div class="tabs-content">
-            ${this.activeTab === 'record'
-              ? html`
-                  <game-actions
-                    .players=${this.session.players}
-                    .currentDealer=${this.session ? this.session.players.find((p) => p.id === StorageService.getCurrentDealerId(this.session!))?.name || 'Unknown' : 'Unknown'}
-                    .nextDealerId=${this.session ? StorageService.getNextDealerId(this.session) : ''}
-                    .currentPot=${this.session ? StorageService.calculateCurrentPot(this.session) : 0}
-                    .piatto=${this.session?.piatto || 0}
-                    @dealer-selected=${this.handleDealerSelected}
-                    @round-recorded=${this.handleRoundRecorded}
-                    @giro-chiuso-recorded=${this.handleGiroChiusoRecorded}
-                  ></game-actions>
-                `
-              : this.activeTab === 'history'
+          <player-list
+            .players=${this.session.players}
+            .balances=${StorageService.calculatePlayerBalances(this.session)}
+          ></player-list>
+
+          <div class="tabs-container">
+            <div class="tabs-nav">
+              <button
+                class="tab-btn ${this.activeTab === 'record' ? 'active' : ''}"
+                @click=${() => (this.activeTab = 'record')}
+              >
+                Registra Risultato
+              </button>
+              <button
+                class="tab-btn ${this.activeTab === 'history' ? 'active' : ''}"
+                @click=${() => (this.activeTab = 'history')}
+              >
+                Registro (${this.session.events.length})
+              </button>
+              <button
+                class="tab-btn ${this.activeTab === 'settings' ? 'active' : ''}"
+                @click=${() => (this.activeTab = 'settings')}
+              >
+                ⚙ Impostazioni
+              </button>
+              <button
+                class="tab-btn ${this.activeTab === 'statistics' ? 'active' : ''}"
+                @click=${() => (this.activeTab = 'statistics')}
+              >
+                📊 Statistiche
+              </button>
+            </div>
+
+            <div class="tabs-content">
+              ${this.activeTab === 'record'
                 ? html`
-                    <game-history
-                      .events=${this.session.events}
+                    <game-actions
                       .players=${this.session.players}
-                      @delete-event=${this.handleDeleteEvent}
-                    ></game-history>
+                      .currentDealer=${this.session ? this.session.players.find((p) => p.id === StorageService.getCurrentDealerId(this.session!))?.name || 'Unknown' : 'Unknown'}
+                      .nextDealerId=${this.session ? StorageService.getNextDealerId(this.session) : ''}
+                      .currentPot=${this.session ? StorageService.calculateCurrentPot(this.session) : 0}
+                      .piatto=${this.session?.piatto || 0}
+                      @dealer-selected=${this.handleDealerSelected}
+                      @round-recorded=${this.handleRoundRecorded}
+                      @giro-chiuso-recorded=${this.handleGiroChiusoRecorded}
+                    ></game-actions>
                   `
-                : this.activeTab === 'settings'
+                : this.activeTab === 'history'
                   ? html`
-                      <game-settings
+                      <game-history
+                        .events=${this.session.events}
                         .players=${this.session.players}
-                        .piatto=${this.session.piatto}
-                        @piatto-changed=${this.handlePiattoChanged}
-                        @player-order-changed=${this.handlePlayerOrderChanged}
-                        @player-added=${this.handlePlayerAdded}
-                        @player-status-changed=${this.handlePlayerStatusChanged}
-                      ></game-settings>
+                        @delete-event=${this.handleDeleteEvent}
+                      ></game-history>
                     `
-                  : html`
-                      <game-stats .session=${this.session}></game-stats>
-                    `}
+                  : this.activeTab === 'settings'
+                    ? html`
+                        <game-settings
+                          .players=${this.session.players}
+                          .piatto=${this.session.piatto}
+                          @piatto-changed=${this.handlePiattoChanged}
+                          @player-order-changed=${this.handlePlayerOrderChanged}
+                          @player-added=${this.handlePlayerAdded}
+                          @player-status-changed=${this.handlePlayerStatusChanged}
+                        ></game-settings>
+                      `
+                    : html`
+                        <game-stats .session=${this.session}></game-stats>
+                      `}
+            </div>
           </div>
         </div>
-      </div>
-    `
+      `
+    }
+
+    // Fallback - should not happen, but show setup as default
+    return html`<game-setup @create-session=${this.handleSessionCreate}></game-setup>`
   }
 
   static styles = css`
@@ -245,12 +319,13 @@ export class BestiaApp extends LitElement {
     }
 
     .header {
-      display: flex;
-      justify-content: space-between;
+      display: grid;
+      grid-template-columns: auto 1fr auto;
       align-items: center;
       margin-bottom: 2rem;
       padding: 0 0 1rem 0;
       border-bottom: 2px solid var(--gray-200);
+      gap: 1rem;
     }
 
     h1 {
@@ -258,6 +333,7 @@ export class BestiaApp extends LitElement {
       font-size: 2rem;
       font-weight: 700;
       color: var(--primary);
+      text-align: center;
     }
 
     .new-game-btn {
@@ -274,6 +350,24 @@ export class BestiaApp extends LitElement {
 
     .new-game-btn:hover {
       background: #dc2626;
+    }
+
+    .back-btn {
+      padding: 0.5rem 1rem;
+      background: transparent;
+      color: var(--primary);
+      border: 2px solid var(--primary);
+      border-radius: 0.5rem;
+      font-size: 0.875rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      white-space: nowrap;
+    }
+
+    .back-btn:hover {
+      background: var(--primary);
+      color: white;
     }
 
     .game-info {

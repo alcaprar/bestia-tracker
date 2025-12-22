@@ -1,11 +1,75 @@
 import type { GameSession, Player, GameEvent, Transaction } from './types.js'
 
-const STORAGE_KEY = 'bestia-game-session'
+const GAMES_KEY = 'bestia-games'
+const CURRENT_GAME_KEY = 'bestia-current-game-id'
+
+export interface SavedGame {
+  id: string
+  createdAt: number
+  session: GameSession
+}
 
 export class StorageService {
   static getSession(): GameSession | null {
     try {
-      const data = localStorage.getItem(STORAGE_KEY)
+      const currentGameId = localStorage.getItem(CURRENT_GAME_KEY)
+      if (!currentGameId) return null
+
+      const games = this.getAllGames()
+      const game = games.find((g) => g.id === currentGameId)
+      return game?.session || null
+    } catch (error) {
+      console.error('Error reading from localStorage:', error)
+      return null
+    }
+  }
+
+  static getAllGames(): SavedGame[] {
+    try {
+      const data = localStorage.getItem(GAMES_KEY)
+      if (!data) return []
+
+      const games: any[] = JSON.parse(data)
+      // Convert metadata Maps back from JSON
+      return games.map((game) => ({
+        ...game,
+        session: {
+          ...game.session,
+          events: game.session.events
+            ? game.session.events.map((event: any) => ({
+                ...event,
+                metadata: event.metadata
+                  ? {
+                      ...event.metadata,
+                      prese: event.metadata.prese ? new Map(event.metadata.prese) : undefined,
+                    }
+                  : undefined,
+              }))
+            : [],
+        },
+      }))
+    } catch (error) {
+      console.error('Error reading games from localStorage:', error)
+      return []
+    }
+  }
+
+  static getGameById(gameId: string): SavedGame | null {
+    const games = this.getAllGames()
+    return games.find((g) => g.id === gameId) || null
+  }
+
+  static setCurrentGame(gameId: string): void {
+    localStorage.setItem(CURRENT_GAME_KEY, gameId)
+  }
+
+  static getCurrentGameId(): string | null {
+    return localStorage.getItem(CURRENT_GAME_KEY)
+  }
+
+  static loadSessionOld(): GameSession | null {
+    try {
+      const data = localStorage.getItem('bestia-game-session')
       if (!data) return null
       const session: GameSession = JSON.parse(data)
 
@@ -35,18 +99,32 @@ export class StorageService {
   static saveSession(session: GameSession): void {
     try {
       session.updatedAt = Date.now()
+      const gameId = session.id
+      const games = this.getAllGames()
+
       // Convert metadata Maps to arrays for JSON serialization
       const sessionToSave = {
         ...session,
         events: session.events.map((event) => ({
           ...event,
-          metadata: event.metadata ? {
-            ...event.metadata,
-            prese: event.metadata.prese ? Array.from(event.metadata.prese.entries()) : undefined,
-          } : undefined,
+          metadata: event.metadata
+            ? {
+                ...event.metadata,
+                prese: event.metadata.prese ? Array.from(event.metadata.prese.entries()) : undefined,
+              }
+            : undefined,
         })),
       }
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(sessionToSave))
+
+      // Update or add the game
+      const gameIndex = games.findIndex((g) => g.id === gameId)
+      if (gameIndex >= 0) {
+        games[gameIndex] = { id: gameId, createdAt: games[gameIndex].createdAt, session: sessionToSave as GameSession }
+      } else {
+        games.push({ id: gameId, createdAt: Date.now(), session: sessionToSave as GameSession })
+      }
+
+      localStorage.setItem(GAMES_KEY, JSON.stringify(games))
     } catch (error) {
       console.error('Error writing to localStorage:', error)
     }
@@ -71,6 +149,7 @@ export class StorageService {
     }
 
     this.saveSession(session)
+    this.setCurrentGame(session.id)
     return session
   }
 
@@ -424,7 +503,28 @@ export class StorageService {
     return losses
   }
 
+  static clearCurrentGame(): void {
+    localStorage.removeItem(CURRENT_GAME_KEY)
+  }
+
+  static deleteGame(gameId: string): void {
+    try {
+      const games = this.getAllGames()
+      const filtered = games.filter((g) => g.id !== gameId)
+      localStorage.setItem(GAMES_KEY, JSON.stringify(filtered))
+
+      // If deleted game was current, clear current game
+      const currentGameId = localStorage.getItem(CURRENT_GAME_KEY)
+      if (currentGameId === gameId) {
+        this.clearCurrentGame()
+      }
+    } catch (error) {
+      console.error('Error deleting game:', error)
+    }
+  }
+
+  // Backward compatibility
   static clearSession(): void {
-    localStorage.removeItem(STORAGE_KEY)
+    this.clearCurrentGame()
   }
 }
