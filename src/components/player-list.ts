@@ -1,43 +1,41 @@
-import { LitElement, css, html } from 'lit'
-import { customElement, property } from 'lit/decorators.js'
-import type { Player } from '../types.js'
+import { LitElement, css, html } from 'lit';
+import { customElement, property } from 'lit/decorators.js';
+import type { Player } from '../types.js';
 
 @customElement('player-list')
 export class PlayerList extends LitElement {
   @property({ type: Array })
-  players: Player[] = []
+  players: Player[] = [];
 
   @property({ type: Map })
-  balances: Map<string, number> = new Map()
+  balances: Map<string, number> = new Map();
 
   @property({ type: String })
-  currency: string = '€'
+  currency: string = '€';
 
   render() {
     // Sort players by balance (highest first)
     const sortedPlayers = [...this.players].sort((a, b) => {
-      const aBalance = this.balances.get(a.id) ?? a.balance
-      const bBalance = this.balances.get(b.id) ?? b.balance
-      return bBalance - aBalance
-    })
+      const aBalance = this.balances.get(a.id) ?? a.balance;
+      const bBalance = this.balances.get(b.id) ?? b.balance;
+      return bBalance - aBalance;
+    });
 
     return html`
       <div class="players-grid">
-        ${sortedPlayers.map(
-          (player) => {
-            const balance = this.balances.get(player.id) ?? player.balance
-            return html`
-              <div class="player-card ${balance > 0 ? 'winning' : balance < 0 ? 'losing' : ''}">
-                <div class="player-name">${player.name}</div>
-                <div class="player-stats">
-                  <span class="stat-value">${this.currency}${balance.toFixed(2)}</span>
-                </div>
+        ${sortedPlayers.map((player) => {
+          const balance = this.balances.get(player.id) ?? player.balance;
+          return html`
+            <div class="player-card ${balance > 0 ? 'winning' : balance < 0 ? 'losing' : ''}">
+              <div class="player-name">${player.name}</div>
+              <div class="player-stats">
+                <span class="stat-value">${this.currency}${balance.toFixed(2)}</span>
               </div>
-            `
-          }
-        )}
+            </div>
+          `;
+        })}
       </div>
-    `
+    `;
   }
 
   static styles = css`
@@ -63,7 +61,9 @@ export class PlayerList extends LitElement {
       border-radius: 0.75rem;
       box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
       border-left: 4px solid var(--gray-200);
-      transition: transform 0.2s, box-shadow 0.2s;
+      transition:
+        transform 0.2s,
+        box-shadow 0.2s;
     }
 
     .player-card:hover {
@@ -124,11 +124,11 @@ export class PlayerList extends LitElement {
         font-size: 0.875rem;
       }
     }
-  `
+  `;
 }
 
 declare global {
   interface HTMLElementTagNameMap {
-    'player-list': PlayerList
+    'player-list': PlayerList;
   }
 }

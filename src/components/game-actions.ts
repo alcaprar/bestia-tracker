@@ -1,90 +1,95 @@
-import { LitElement, css, html } from 'lit'
-import { customElement, property, state } from 'lit/decorators.js'
-import type { Player } from '../types.js'
-import './game-input.js'
+import { LitElement, css, html } from 'lit';
+import { customElement, property, state } from 'lit/decorators.js';
+import type { Player } from '../types.js';
+import './game-input.js';
 
-type ActionStep = 'menu' | 'select_dealer' | 'record_result' | 'giro_chiuso' | 'manual_entry'
+type ActionStep = 'menu' | 'select_dealer' | 'record_result' | 'giro_chiuso' | 'manual_entry';
 
 @customElement('game-actions')
 export class GameActions extends LitElement {
   @property({ type: Array })
-  players: Player[] = []
+  players: Player[] = [];
 
   @property({ type: String })
-  currentDealer: string = ''
+  currentDealer: string = '';
 
   @property({ type: String })
-  nextDealerId: string = ''
+  nextDealerId: string = '';
 
   @property({ type: Number })
-  currentPot: number = 0
+  currentPot: number = 0;
 
   @property({ type: Number })
-  piatto: number = 0
+  piatto: number = 0;
 
   @property({ type: String })
-  currency: string = '€'
+  currency: string = '€';
 
   @state()
-  private step: ActionStep = 'menu'
+  private step: ActionStep = 'menu';
 
   @state()
-  private selectedDealerId: string = ''
+  private selectedDealerId: string = '';
 
   @state()
-  private manualAmounts: Map<string, number> = new Map()
+  private manualAmounts: Map<string, number> = new Map();
 
   @state()
-  private manualDescription: string = ''
+  private manualDescription: string = '';
 
   connectedCallback() {
-    super.connectedCallback()
+    super.connectedCallback();
     if (this.players.length > 0 && !this.selectedDealerId) {
-      this.selectedDealerId = this.players[0].id
+      this.selectedDealerId = this.players[0].id;
     }
   }
 
   private selectDealer(): void {
-    this.step = 'select_dealer'
+    this.step = 'select_dealer';
     // Suggest the next dealer if available, otherwise use current dealer
-    this.selectedDealerId = this.nextDealerId || this.players.find((p) => p.name === this.currentDealer)?.id || this.players[0].id
+    this.selectedDealerId =
+      this.nextDealerId ||
+      this.players.find((p) => p.name === this.currentDealer)?.id ||
+      this.players[0].id;
   }
 
   private selectRecordResult(): void {
-    this.step = 'record_result'
+    this.step = 'record_result';
   }
 
   private selectGiroChiuso(): void {
-    this.step = 'giro_chiuso'
+    this.step = 'giro_chiuso';
   }
 
   private selectManualEntry(): void {
-    this.step = 'manual_entry'
+    this.step = 'manual_entry';
     // Initialize all active players with 0
-    this.manualAmounts = new Map()
-    this.players.filter((p) => p.isActive).forEach((player) => {
-      this.manualAmounts.set(player.id, 0)
-    })
+    this.manualAmounts = new Map();
+    this.players
+      .filter((p) => p.isActive)
+      .forEach((player) => {
+        this.manualAmounts.set(player.id, 0);
+      });
   }
 
   private confirmDealer(): void {
     // Read the actual value from the select element to ensure we have the correct id
-    const selectElement = this.shadowRoot?.querySelector('select') as HTMLSelectElement
-    const dealerId = selectElement?.value || this.selectedDealerId
+    const selectElement = this.shadowRoot?.querySelector('select') as HTMLSelectElement;
+    const dealerId = selectElement?.value || this.selectedDealerId;
 
-    const dealer = this.players.find((p) => p.id === dealerId)
+    const dealer = this.players.find((p) => p.id === dealerId);
     if (dealer) {
       this.dispatchEvent(
         new CustomEvent('dealer-selected', {
           detail: { dealerId: dealerId, dealerName: dealer.name },
         })
-      )
-      this.backToMenu()
+      );
+      this.backToMenu();
     }
   }
 
   private backToMenu(): void {
-    this.step = 'menu'
+    this.step = 'menu';
   }
 
   private handleRecordResult(event: CustomEvent): void {
@@ -92,13 +97,13 @@ export class GameActions extends LitElement {
       new CustomEvent('round-recorded', {
         detail: event.detail,
       })
-    )
-    this.backToMenu()
+    );
+    this.backToMenu();
   }
 
   private confirmGiroChiuso(): void {
-    this.dispatchEvent(new CustomEvent('giro-chiuso-recorded'))
-    this.backToMenu()
+    this.dispatchEvent(new CustomEvent('giro-chiuso-recorded'));
+    this.backToMenu();
   }
 
   private confirmManualEntry(): void {
@@ -109,33 +114,33 @@ export class GameActions extends LitElement {
           description: this.manualDescription || undefined,
         },
       })
-    )
-    this.manualAmounts = new Map()
-    this.manualDescription = ''
-    this.backToMenu()
+    );
+    this.manualAmounts = new Map();
+    this.manualDescription = '';
+    this.backToMenu();
   }
 
   private updateManualAmount(playerId: string, value: number): void {
-    this.manualAmounts.set(playerId, value)
-    this.requestUpdate()
+    this.manualAmounts.set(playerId, value);
+    this.requestUpdate();
   }
 
   private updateManualDescription(value: string): void {
-    this.manualDescription = value
-    this.requestUpdate()
+    this.manualDescription = value;
+    this.requestUpdate();
   }
 
   render() {
     if (this.step === 'menu') {
-      return this.renderMenu()
+      return this.renderMenu();
     } else if (this.step === 'select_dealer') {
-      return this.renderDealerSelection()
+      return this.renderDealerSelection();
     } else if (this.step === 'record_result') {
-      return this.renderRecordResult()
+      return this.renderRecordResult();
     } else if (this.step === 'giro_chiuso') {
-      return this.renderGiroChiuso()
+      return this.renderGiroChiuso();
     } else if (this.step === 'manual_entry') {
-      return this.renderManualEntry()
+      return this.renderManualEntry();
     }
   }
 
@@ -169,7 +174,7 @@ export class GameActions extends LitElement {
           </button>
         </div>
       </div>
-    `
+    `;
   }
 
   private renderDealerSelection() {
@@ -181,16 +186,25 @@ export class GameActions extends LitElement {
         </div>
 
         <div class="dealer-selector">
-          <select @change=${(e: Event) => {
-            this.selectedDealerId = (e.target as HTMLSelectElement).value
-          }}>
-            ${this.players.filter((p) => p.isActive).map((player) => html`<option value=${player.id} ?selected=${player.id === this.selectedDealerId}>${player.name}</option>`)}
+          <select
+            @change=${(e: Event) => {
+              this.selectedDealerId = (e.target as HTMLSelectElement).value;
+            }}
+          >
+            ${this.players
+              .filter((p) => p.isActive)
+              .map(
+                (player) =>
+                  html`<option value=${player.id} ?selected=${player.id === this.selectedDealerId}>
+                    ${player.name}
+                  </option>`
+              )}
           </select>
         </div>
 
         <button class="confirm-btn" @click=${this.confirmDealer}>Confirm Dealer</button>
       </div>
-    `
+    `;
   }
 
   private renderRecordResult() {
@@ -210,7 +224,7 @@ export class GameActions extends LitElement {
           @game-result=${this.handleRecordResult}
         ></game-input>
       </div>
-    `
+    `;
   }
 
   private renderGiroChiuso() {
@@ -230,11 +244,11 @@ export class GameActions extends LitElement {
           Confirm Giro Chiuso
         </button>
       </div>
-    `
+    `;
   }
 
   private renderManualEntry() {
-    const hasAnyNonZero = Array.from(this.manualAmounts.values()).some((v) => v !== 0)
+    const hasAnyNonZero = Array.from(this.manualAmounts.values()).some((v) => v !== 0);
 
     return html`
       <div class="actions-container">
@@ -244,44 +258,48 @@ export class GameActions extends LitElement {
         </div>
 
         <div class="manual-info">
-          <p>Inserisci importi personalizzati per ogni giocatore. I valori positivi sono vincite, i negativi sono perdite.</p>
-          <p>Nota: I valori non devono sommare a zero - usa questa opzione per aggiustamenti speciali.</p>
+          <p>
+            Inserisci importi personalizzati per ogni giocatore. I valori positivi sono vincite, i
+            negativi sono perdite.
+          </p>
+          <p>
+            Nota: I valori non devono sommare a zero - usa questa opzione per aggiustamenti
+            speciali.
+          </p>
         </div>
 
         <div class="manual-players-grid">
           ${this.players
             .filter((p) => p.isActive)
-            .map(
-              (player) => {
-                const amount = this.manualAmounts.get(player.id) || 0
-                return html`
-                  <div class="manual-player-row">
-                    <label class="player-label">${player.name}</label>
-                    <div class="amount-input-wrapper">
-                      <span class="currency-symbol">${this.currency}</span>
-                      <input
-                        type="number"
-                        step="0.01"
-                        .value=${amount.toString()}
-                        @input=${(e: Event) => {
-                          const value = parseFloat((e.target as HTMLInputElement).value) || 0
-                          this.updateManualAmount(player.id, value)
-                        }}
-                        class="amount-input ${amount > 0 ? 'positive' : amount < 0 ? 'negative' : ''}"
-                        placeholder="0.00"
-                      />
-                    </div>
-                    ${amount !== 0
-                      ? html`
-                          <div class="amount-preview ${amount > 0 ? 'win' : 'loss'}">
-                            ${amount > 0 ? '+' : ''}€${Math.abs(amount).toFixed(2)}
-                          </div>
-                        `
-                      : ''}
+            .map((player) => {
+              const amount = this.manualAmounts.get(player.id) || 0;
+              return html`
+                <div class="manual-player-row">
+                  <label class="player-label">${player.name}</label>
+                  <div class="amount-input-wrapper">
+                    <span class="currency-symbol">${this.currency}</span>
+                    <input
+                      type="number"
+                      step="0.01"
+                      .value=${amount.toString()}
+                      @input=${(e: Event) => {
+                        const value = parseFloat((e.target as HTMLInputElement).value) || 0;
+                        this.updateManualAmount(player.id, value);
+                      }}
+                      class="amount-input ${amount > 0 ? 'positive' : amount < 0 ? 'negative' : ''}"
+                      placeholder="0.00"
+                    />
                   </div>
-                `
-              }
-            )}
+                  ${amount !== 0
+                    ? html`
+                        <div class="amount-preview ${amount > 0 ? 'win' : 'loss'}">
+                          ${amount > 0 ? '+' : ''}€${Math.abs(amount).toFixed(2)}
+                        </div>
+                      `
+                    : ''}
+                </div>
+              `;
+            })}
         </div>
 
         <div class="description-section">
@@ -290,18 +308,22 @@ export class GameActions extends LitElement {
             id="manual-description"
             .value=${this.manualDescription}
             @input=${(e: Event) => {
-              this.updateManualDescription((e.target as HTMLTextAreaElement).value)
+              this.updateManualDescription((e.target as HTMLTextAreaElement).value);
             }}
             placeholder="Spiega perché è stato necessario questo aggiustamento manuale..."
             rows="3"
           ></textarea>
         </div>
 
-        <button class="confirm-btn manual-confirm-btn" @click=${this.confirmManualEntry} ?disabled=${!hasAnyNonZero}>
+        <button
+          class="confirm-btn manual-confirm-btn"
+          @click=${this.confirmManualEntry}
+          ?disabled=${!hasAnyNonZero}
+        >
           Conferma Inserimento Manuale
         </button>
       </div>
-    `
+    `;
   }
 
   static styles = css`
@@ -654,11 +676,11 @@ export class GameActions extends LitElement {
         justify-self: start;
       }
     }
-  `
+  `;
 }
 
 declare global {
   interface HTMLElementTagNameMap {
-    'game-actions': GameActions
+    'game-actions': GameActions;
   }
 }

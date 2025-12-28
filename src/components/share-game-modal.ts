@@ -1,78 +1,78 @@
-import { LitElement, css, html } from 'lit'
-import { customElement, property, state } from 'lit/decorators.js'
-import QRCode from 'qrcode'
-import type { GameSession } from '../types.js'
+import { LitElement, css, html } from 'lit';
+import { customElement, property, state } from 'lit/decorators.js';
+import QRCode from 'qrcode';
+import type { GameSession } from '../types.js';
 
 @customElement('share-game-modal')
 export class ShareGameModal extends LitElement {
   @property({ type: String })
-  shareUrl: string = ''
+  shareUrl: string = '';
 
   @property({ type: Object })
-  session: GameSession | null = null
+  session: GameSession | null = null;
 
   @state()
-  private qrCodeDataUrl: string = ''
+  private qrCodeDataUrl: string = '';
 
   @state()
-  private showModal = false
+  private showModal = false;
 
   @state()
-  private copied = false
+  private copied = false;
 
   @state()
-  private qrError: string = ''
+  private qrError: string = '';
 
   @state()
-  private uncompressedSize: number = 0
+  private uncompressedSize: number = 0;
 
   @state()
-  private compressedSize: number = 0
+  private compressedSize: number = 0;
 
   @state()
-  private shortUrl: string = ''
+  private shortUrl: string = '';
 
   @state()
-  private isGeneratingShortUrl = false
+  private isGeneratingShortUrl = false;
 
   @state()
-  private showTechnicalDetails = false
+  private showTechnicalDetails = false;
 
   @state()
-  private showLongLink = false
+  private showLongLink = false;
 
   updated() {
     if (this.showModal && !this.qrCodeDataUrl && !this.qrError && this.shareUrl) {
-      this.calculateDataSizes()
+      this.calculateDataSizes();
       this.generateShortUrl().then(() => {
-        this.generateQRCode()
-      })
+        this.generateQRCode();
+      });
     }
   }
 
   private async generateShortUrl(): Promise<void> {
-    if (this.shortUrl) return // Already generated
+    if (this.shortUrl) return; // Already generated
 
     // Always try to generate short URL
-    this.isGeneratingShortUrl = true
+    this.isGeneratingShortUrl = true;
     try {
       // Try using TinyURL API endpoint
       const response = await fetch(
         `https://tinyurl.com/api-create.php?url=${encodeURIComponent(this.shareUrl)}`,
         { method: 'GET' }
-      )
-      const shortUrl = await response.text()
+      );
+      const shortUrl = await response.text();
       if (shortUrl && !shortUrl.includes('error')) {
-        this.shortUrl = shortUrl.trim()
+        this.shortUrl = shortUrl.trim();
       } else {
-        this.shortUrl = this.shareUrl
+        this.shortUrl = this.shareUrl;
       }
     } catch (error) {
-      console.error('Error generating short URL:', error)
+      console.error('Error generating short URL:', error);
       // Fallback: just use the original URL if shortening fails
-      this.shortUrl = this.shareUrl
+      this.shortUrl = this.shareUrl;
     } finally {
-      this.isGeneratingShortUrl = false
+      this.isGeneratingShortUrl = false;
     }
   }
 
@@ -86,31 +86,33 @@ export class ShareGameModal extends LitElement {
           metadata: event.metadata
             ? {
                 ...event.metadata,
-                prese: event.metadata.prese ? Array.from(event.metadata.prese.entries()) : undefined,
+                prese: event.metadata.prese
+                  ? Array.from(event.metadata.prese.entries())
+                  : undefined,
               }
             : undefined,
         })),
-      }
-      this.uncompressedSize = new Blob([JSON.stringify(sessionData)]).size
+      };
+      this.uncompressedSize = new Blob([JSON.stringify(sessionData)]).size;
     }
 
     // Calculate compressed size (the query parameter part)
-    const shareParam = new URL(`http://localhost${this.shareUrl}`).searchParams.get('share') || ''
-    this.compressedSize = new Blob([shareParam]).size
+    const shareParam = new URL(`http://localhost${this.shareUrl}`).searchParams.get('share') || '';
+    this.compressedSize = new Blob([shareParam]).size;
   }
 
   private formatBytes(bytes: number): string {
-    if (bytes === 0) return '0 B'
-    const k = 1024
-    const sizes = ['B', 'KB', 'MB']
-    const i = Math.floor(Math.log(bytes) / Math.log(k))
-    return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + ' ' + sizes[i]
+    if (bytes === 0) return '0 B';
+    const k = 1024;
+    const sizes = ['B', 'KB', 'MB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + ' ' + sizes[i];
   }
 
   private async generateQRCode(): Promise<void> {
     try {
       // Use short URL if available, otherwise use full URL
-      const urlForQR = this.shortUrl || this.shareUrl
+      const urlForQR = this.shortUrl || this.shareUrl;
       const dataUrl = await QRCode.toDataURL(urlForQR, {
         width: 256,
         margin: 2,
@@ -119,49 +121,49 @@ export class ShareGameModal extends LitElement {
           dark: '#111827',
           light: '#ffffff',
         },
-      })
-      this.qrCodeDataUrl = dataUrl
-      this.qrError = ''
+      });
+      this.qrCodeDataUrl = dataUrl;
+      this.qrError = '';
     } catch (error) {
-      console.error('Error generating QR code:', error)
-      this.qrError = 'QR code too large for this game. Use the link instead.'
-      this.qrCodeDataUrl = ''
+      console.error('Error generating QR code:', error);
+      this.qrError = 'QR code too large for this game. Use the link instead.';
+      this.qrCodeDataUrl = '';
     }
   }
 
   private copyToClipboard(): void {
     // Copy the currently displayed URL (based on toggle)
-    const urlToCopy = this.showLongLink ? this.shareUrl : (this.shortUrl || this.shareUrl)
-    navigator.clipboard.writeText(urlToCopy)
-    this.copied = true
+    const urlToCopy = this.showLongLink ? this.shareUrl : this.shortUrl || this.shareUrl;
+    navigator.clipboard.writeText(urlToCopy);
+    this.copied = true;
     setTimeout(() => {
-      this.copied = false
-    }, 2000)
+      this.copied = false;
+    }, 2000);
   }
 
   private downloadQRCode(): void {
-    const link = document.createElement('a')
-    link.href = this.qrCodeDataUrl
-    link.download = `bestia-game-qr-${new Date().toISOString().split('T')[0]}.png`
-    link.click()
+    const link = document.createElement('a');
+    link.href = this.qrCodeDataUrl;
+    link.download = `bestia-game-qr-${new Date().toISOString().split('T')[0]}.png`;
+    link.click();
   }
 
   openModal(): void {
-    this.showModal = true
-    this.qrCodeDataUrl = ''
-    this.qrError = ''
-    this.shortUrl = ''
-    this.showTechnicalDetails = false
-    this.showLongLink = false
+    this.showModal = true;
+    this.qrCodeDataUrl = '';
+    this.qrError = '';
+    this.shortUrl = '';
+    this.showTechnicalDetails = false;
+    this.showLongLink = false;
   }
 
   closeModal(): void {
-    this.showModal = false
+    this.showModal = false;
   }
 
   render() {
     if (!this.showModal) {
-      return html``
+      return html``;
     }
 
     return html`
@@ -174,25 +176,42 @@ export class ShareGameModal extends LitElement {
 
           <div class="modal-content">
             <div class="disclaimer">
-              <strong>⚠️ Nota:</strong> Questo link condivide solo lo stato attuale della partita. Se apporterai modifiche dopo, l'altra persona non riceverà gli aggiornamenti. È solo una condivisione della fotografia della partita in questo momento.
+              <strong>⚠️ Nota:</strong> Questo link condivide solo lo stato attuale della partita.
+              Se apporterai modifiche dopo, l'altra persona non riceverà gli aggiornamenti. È solo
+              una condivisione della fotografia della partita in questo momento.
             </div>
 
             <!-- Link Section (PRIMARY) -->
             <div class="link-section">
               <h3>Link di Condivisione</h3>
-              ${this.isGeneratingShortUrl ? html`<div class="loading">Generazione link breve...</div>` : ''}
+              ${this.isGeneratingShortUrl
+                ? html`<div class="loading">Generazione link breve...</div>`
+                : ''}
               <div class="link-input-group">
-                <input type="text" .value=${this.showLongLink ? this.shareUrl : (this.shortUrl || this.shareUrl)} readonly class="share-link" />
-                <button class="copy-btn ${this.copied ? 'copied' : ''}" @click=${this.copyToClipboard}>
+                <input
+                  type="text"
+                  .value=${this.showLongLink ? this.shareUrl : this.shortUrl || this.shareUrl}
+                  readonly
+                  class="share-link"
+                />
+                <button
+                  class="copy-btn ${this.copied ? 'copied' : ''}"
+                  @click=${this.copyToClipboard}
+                >
                   ${this.copied ? '✓ Copiato' : '📋 Copia'}
                 </button>
               </div>
               ${this.shortUrl && this.shortUrl !== this.shareUrl
-                ? html`<button class="toggle-link-btn" @click=${() => (this.showLongLink = !this.showLongLink)}>
+                ? html`<button
+                    class="toggle-link-btn"
+                    @click=${() => (this.showLongLink = !this.showLongLink)}
+                  >
                     ${this.showLongLink ? '🔒 Link breve' : '🔓 Link lungo (fallback)'}
                   </button>`
                 : ''}
-              <p class="help-text">Condividi questo link per permettere agli altri di importare la partita</p>
+              <p class="help-text">
+                Condividi questo link per permettere agli altri di importare la partita
+              </p>
             </div>
 
             <!-- QR Code Section -->
@@ -201,7 +220,9 @@ export class ShareGameModal extends LitElement {
               ${this.qrCodeDataUrl
                 ? html`
                     <img src="${this.qrCodeDataUrl}" alt="QR Code" class="qr-code" />
-                    <button class="download-qr-btn" @click=${this.downloadQRCode}>⬇️ Scarica QR</button>
+                    <button class="download-qr-btn" @click=${this.downloadQRCode}>
+                      ⬇️ Scarica QR
+                    </button>
                   `
                 : this.qrError
                   ? html`<div class="qr-error">${this.qrError}</div>`
@@ -210,7 +231,10 @@ export class ShareGameModal extends LitElement {
 
             <!-- Technical Details Toggle -->
             <div class="technical-details">
-              <button class="toggle-btn" @click=${() => (this.showTechnicalDetails = !this.showTechnicalDetails)}>
+              <button
+                class="toggle-btn"
+                @click=${() => (this.showTechnicalDetails = !this.showTechnicalDetails)}
+              >
                 ${this.showTechnicalDetails ? '▼' : '▶'} Dettagli tecnici
               </button>
               ${this.showTechnicalDetails
@@ -228,7 +252,11 @@ export class ShareGameModal extends LitElement {
                         ${this.uncompressedSize > 0
                           ? html`<div class="compression-ratio">
                               <span class="label">Compressione:</span>
-                              <span class="value">${Math.round((1 - this.compressedSize / this.uncompressedSize) * 100)}%</span>
+                              <span class="value"
+                                >${Math.round(
+                                  (1 - this.compressedSize / this.uncompressedSize) * 100
+                                )}%</span
+                              >
                             </div>`
                           : ''}
                       </div>
@@ -237,24 +265,42 @@ export class ShareGameModal extends LitElement {
                             <div class="short-url-info">
                               <div class="short-url-item">
                                 <span class="label">URL originale:</span>
-                                <span class="value">${this.formatBytes(new Blob([this.shareUrl]).size)}</span>
+                                <span class="value"
+                                  >${this.formatBytes(new Blob([this.shareUrl]).size)}</span
+                                >
                               </div>
                               <div class="short-url-item">
                                 <span class="label">URL breve:</span>
-                                <span class="value">${this.formatBytes(new Blob([this.shortUrl]).size)}</span>
+                                <span class="value"
+                                  >${this.formatBytes(new Blob([this.shortUrl]).size)}</span
+                                >
                               </div>
                               <div class="savings">
                                 <span class="label">Risparmio:</span>
-                                <span class="value">${Math.round((1 - new Blob([this.shortUrl]).size / new Blob([this.shareUrl]).size) * 100)}%</span>
+                                <span class="value"
+                                  >${Math.round(
+                                    (1 -
+                                      new Blob([this.shortUrl]).size /
+                                        new Blob([this.shareUrl]).size) *
+                                      100
+                                  )}%</span
+                                >
                               </div>
                             </div>
                           `
                         : ''}
                       <div class="capacity-bar">
                         <div class="bar-background">
-                          <div class="bar-fill ${this.compressedSize > 2953 ? 'exceeded' : ''}" style="width: ${Math.min((this.compressedSize / 2953) * 100, 100)}%"></div>
+                          <div
+                            class="bar-fill ${this.compressedSize > 2953 ? 'exceeded' : ''}"
+                            style="width: ${Math.min((this.compressedSize / 2953) * 100, 100)}%"
+                          ></div>
                         </div>
-                        <span class="capacity-text ${this.compressedSize > 2953 ? 'error' : 'ok'}">${this.compressedSize > 2953 ? `Superato di ${this.formatBytes(this.compressedSize - 2953)}` : `${Math.round((this.compressedSize / 2953) * 100)}% della capacità QR`}</span>
+                        <span class="capacity-text ${this.compressedSize > 2953 ? 'error' : 'ok'}"
+                          >${this.compressedSize > 2953
+                            ? `Superato di ${this.formatBytes(this.compressedSize - 2953)}`
+                            : `${Math.round((this.compressedSize / 2953) * 100)}% della capacità QR`}</span
+                        >
                       </div>
                     </div>
                   `
@@ -263,7 +309,7 @@ export class ShareGameModal extends LitElement {
           </div>
         </div>
       </div>
-    `
+    `;
   }
 
   static styles = css`
@@ -680,11 +726,11 @@ export class ShareGameModal extends LitElement {
         width: 100%;
       }
     }
-  `
+  `;
 }
 
 declare global {
   interface HTMLElementTagNameMap {
-    'share-game-modal': ShareGameModal
+    'share-game-modal': ShareGameModal;
   }
 }

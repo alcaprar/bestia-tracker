@@ -1,124 +1,127 @@
-import { LitElement, css, html } from 'lit'
-import { customElement, property, state } from 'lit/decorators.js'
-import type { Player } from '../types.js'
+import { LitElement, css, html } from 'lit';
+import { customElement, property, state } from 'lit/decorators.js';
+import type { Player } from '../types.js';
 
 @customElement('game-input')
 export class GameInput extends LitElement {
   @property({ type: Array })
-  players: Player[] = []
+  players: Player[] = [];
 
   @property({ type: Number })
-  piatto: number = 0
+  piatto: number = 0;
 
   @property({ type: Number })
-  currentPot: number = 0
+  currentPot: number = 0;
 
   @property({ type: String })
-  dealer: string = ''
+  dealer: string = '';
 
   @property({ type: String })
-  currency: string = '€'
+  currency: string = '€';
 
   @state()
-  private playerSelection: Map<string, 'none' | '1' | '2' | '3' | 'bestia'> = new Map()
+  private playerSelection: Map<string, 'none' | '1' | '2' | '3' | 'bestia'> = new Map();
 
   connectedCallback() {
-    super.connectedCallback()
+    super.connectedCallback();
     // Initialize all active players with no selection
     this.players.forEach((player) => {
       if (player.isActive) {
-        this.playerSelection.set(player.id, 'none')
+        this.playerSelection.set(player.id, 'none');
       }
-    })
+    });
   }
 
-  private setPlayerSelection(playerId: string, selection: 'none' | '1' | '2' | '3' | 'bestia'): void {
-    this.playerSelection.set(playerId, selection)
-    this.requestUpdate()
+  private setPlayerSelection(
+    playerId: string,
+    selection: 'none' | '1' | '2' | '3' | 'bestia'
+  ): void {
+    this.playerSelection.set(playerId, selection);
+    this.requestUpdate();
   }
 
   private calculatePayouts(): Map<string, number> {
-    const payouts = new Map<string, number>()
-    const potAmount = this.currentPot
-    const TOTAL_PRESE = 3 // Game always has exactly 3 prese
+    const payouts = new Map<string, number>();
+    const potAmount = this.currentPot;
+    const TOTAL_PRESE = 3; // Game always has exactly 3 prese
 
     // Initialize all players with 0 payout
     this.players.forEach((player) => {
-      payouts.set(player.id, 0)
-    })
+      payouts.set(player.id, 0);
+    });
 
     // Get bestia players and prese conversion (only from active players)
-    const preseMap = new Map<string, number>()
-    const bestiaPlayers: string[] = []
+    const preseMap = new Map<string, number>();
+    const bestiaPlayers: string[] = [];
 
     this.players.forEach((player) => {
       if (player.isActive) {
-        const selection = this.playerSelection.get(player.id) || 'none'
+        const selection = this.playerSelection.get(player.id) || 'none';
         if (selection === 'bestia') {
-          bestiaPlayers.push(player.id)
-          preseMap.set(player.id, 0)
+          bestiaPlayers.push(player.id);
+          preseMap.set(player.id, 0);
         } else if (selection === 'none') {
-          preseMap.set(player.id, 0)
+          preseMap.set(player.id, 0);
         } else {
-          preseMap.set(player.id, parseInt(selection))
+          preseMap.set(player.id, parseInt(selection));
         }
       }
-    })
+    });
 
     // Get winners (players with prese > 0)
-    const winners = this.players.filter((p) => (preseMap.get(p.id) || 0) > 0)
+    const winners = this.players.filter((p) => (preseMap.get(p.id) || 0) > 0);
 
     if (bestiaPlayers.length > 0) {
       // Some players went bestia
       // Winners split pot proportionally by prese (out of 3 fixed prese)
       winners.forEach((player) => {
-        const playerPrese = preseMap.get(player.id) || 0
-        const share = (playerPrese / TOTAL_PRESE) * potAmount
-        payouts.set(player.id, share)
-      })
+        const playerPrese = preseMap.get(player.id) || 0;
+        const share = (playerPrese / TOTAL_PRESE) * potAmount;
+        payouts.set(player.id, share);
+      });
 
       // Bestia players pay the pot amount
       bestiaPlayers.forEach((playerId) => {
-        payouts.set(playerId, -potAmount)
-      })
+        payouts.set(playerId, -potAmount);
+      });
     } else {
       // No bestia: winners split pot among themselves
       // Non-players (0 prese) pay nothing - they skipped the game
       winners.forEach((player) => {
-        const playerPrese = preseMap.get(player.id) || 0
-        const share = (playerPrese / TOTAL_PRESE) * potAmount
-        payouts.set(player.id, share)
-      })
+        const playerPrese = preseMap.get(player.id) || 0;
+        const share = (playerPrese / TOTAL_PRESE) * potAmount;
+        payouts.set(player.id, share);
+      });
     }
 
-    return payouts
+    return payouts;
   }
 
   private submitResult(): void {
     // Calculate total prese (only from active players)
-    let totalPrese = 0
-    const bestiaPlayers: string[] = []
-    const preseMap = new Map<string, number>()
+    let totalPrese = 0;
+    const bestiaPlayers: string[] = [];
+    const preseMap = new Map<string, number>();
 
     this.players.forEach((player) => {
       if (player.isActive) {
-        const selection = this.playerSelection.get(player.id) || 'none'
+        const selection = this.playerSelection.get(player.id) || 'none';
         if (selection === 'bestia') {
-          bestiaPlayers.push(player.id)
-          preseMap.set(player.id, 0)
+          bestiaPlayers.push(player.id);
+          preseMap.set(player.id, 0);
         } else if (selection === 'none') {
-          preseMap.set(player.id, 0)
+          preseMap.set(player.id, 0);
         } else {
-          const preseCount = parseInt(selection)
-          preseMap.set(player.id, preseCount)
-          totalPrese += preseCount
+          const preseCount = parseInt(selection);
+          preseMap.set(player.id, preseCount);
+          totalPrese += preseCount;
         }
       }
-    })
+    });
 
     // Must have exactly 3 prese to submit
     if (totalPrese !== 3) {
-      return // Can't submit without exactly 3 prese
+      return; // Can't submit without exactly 3 prese
     }
 
     this.dispatchEvent(
@@ -128,37 +131,37 @@ export class GameInput extends LitElement {
           bestia: bestiaPlayers,
         },
       })
-    )
+    );
 
     // Reset form - create new instances to ensure reactivity
-    this.playerSelection = new Map()
+    this.playerSelection = new Map();
     this.players.forEach((player) => {
-      this.playerSelection.set(player.id, 'none')
-    })
-    this.requestUpdate()
+      this.playerSelection.set(player.id, 'none');
+    });
+    this.requestUpdate();
   }
 
   render() {
     // Calculate total prese (only from active players)
-    let totalPrese = 0
+    let totalPrese = 0;
     this.players.forEach((player) => {
       if (player.isActive) {
-        const selection = this.playerSelection.get(player.id) || 'none'
+        const selection = this.playerSelection.get(player.id) || 'none';
         if (selection !== 'none' && selection !== 'bestia') {
-          totalPrese += parseInt(selection)
+          totalPrese += parseInt(selection);
         }
       }
-    })
+    });
 
-    const canSubmit = totalPrese === 3
-    const payouts = this.calculatePayouts()
+    const canSubmit = totalPrese === 3;
+    const payouts = this.calculatePayouts();
     const options = [
       { value: 'none' as const, label: 'Salta', icon: '○' },
       { value: '1' as const, label: '1 Presa', icon: '●' },
       { value: '2' as const, label: '2 Prese', icon: '●●' },
       { value: '3' as const, label: '3 Prese', icon: '●●●' },
       { value: 'bestia' as const, label: 'Bestia', icon: '💣' },
-    ]
+    ];
 
     return html`
       <div class="game-input-container">
@@ -174,52 +177,59 @@ export class GameInput extends LitElement {
         </div>
 
         <h2>Registra Risultato Giro</h2>
-        <p class="instructions">Seleziona un'opzione per giocatore (esattamente 3 prese totali richieste)</p>
+        <p class="instructions">
+          Seleziona un'opzione per giocatore (esattamente 3 prese totali richieste)
+        </p>
 
         <div class="players-input-grid">
-          ${this.players.filter((p) => p.isActive).map(
-            (player) => html`
-              <div class="player-input-card">
-                <div class="player-name">${player.name}</div>
+          ${this.players
+            .filter((p) => p.isActive)
+            .map(
+              (player) => html`
+                <div class="player-input-card">
+                  <div class="player-name">${player.name}</div>
 
-                <fieldset class="radio-group">
-                  <legend class="sr-only">Seleziona prese per ${player.name}</legend>
-                  ${options.map(
-                    (option) => html`
-                      <label class="radio-label">
-                        <input
-                          type="radio"
-                          name="prese-${player.id}"
-                          value=${option.value}
-                          .checked=${(this.playerSelection.get(player.id) || 'none') === option.value}
-                          @change=${() => this.setPlayerSelection(player.id, option.value)}
-                        />
-                        <span class="radio-content">
-                          <span class="radio-icon">${option.icon}</span>
-                          <span class="radio-label-text">${option.label}</span>
-                        </span>
-                      </label>
-                    `
-                  )}
-                </fieldset>
+                  <fieldset class="radio-group">
+                    <legend class="sr-only">Seleziona prese per ${player.name}</legend>
+                    ${options.map(
+                      (option) => html`
+                        <label class="radio-label">
+                          <input
+                            type="radio"
+                            name="prese-${player.id}"
+                            value=${option.value}
+                            .checked=${(this.playerSelection.get(player.id) || 'none') ===
+                            option.value}
+                            @change=${() => this.setPlayerSelection(player.id, option.value)}
+                          />
+                          <span class="radio-content">
+                            <span class="radio-icon">${option.icon}</span>
+                            <span class="radio-label-text">${option.label}</span>
+                          </span>
+                        </label>
+                      `
+                    )}
+                  </fieldset>
 
-                ${payouts.get(player.id) !== 0
-                  ? html`
-                      <div class="payout ${payouts.get(player.id)! > 0 ? 'win' : 'loss'}">
-                        ${payouts.get(player.id)! > 0 ? '+' : ''}${this.currency}${Math.abs(payouts.get(player.id)!).toFixed(2)}
-                      </div>
-                    `
-                  : ''}
-              </div>
-            `
-          )}
+                  ${payouts.get(player.id) !== 0
+                    ? html`
+                        <div class="payout ${payouts.get(player.id)! > 0 ? 'win' : 'loss'}">
+                          ${payouts.get(player.id)! > 0 ? '+' : ''}${this.currency}${Math.abs(
+                            payouts.get(player.id)!
+                          ).toFixed(2)}
+                        </div>
+                      `
+                    : ''}
+                </div>
+              `
+            )}
         </div>
 
         <button class="submit-btn" @click=${this.submitResult} ?disabled=${!canSubmit}>
           Registra Risultato
         </button>
       </div>
-    `
+    `;
   }
 
   static styles = css`
@@ -459,11 +469,11 @@ export class GameInput extends LitElement {
         font-size: 1.125rem;
       }
     }
-  `
+  `;
 }
 
 declare global {
   interface HTMLElementTagNameMap {
-    'game-input': GameInput
+    'game-input': GameInput;
   }
 }

@@ -1,39 +1,39 @@
-import { LitElement, css, html } from 'lit'
-import { customElement, state } from 'lit/decorators.js'
+import { LitElement, css, html } from 'lit';
+import { customElement, state } from 'lit/decorators.js';
 
 @customElement('game-setup')
 export class GameSetup extends LitElement {
   @state()
-  private players: string[] = ['', '', '', '', '', '', '', '', '', '']
+  private players: string[] = ['', '', '', '', '', '', '', '', '', ''];
 
   @state()
-  private piatto: number = 0.3
+  private piatto: number = 0.3;
 
   @state()
-  private errorMessage: string = ''
+  private errorMessage: string = '';
 
   private handlePlayerNameChange(index: number, value: string): void {
-    this.players[index] = value
-    this.requestUpdate()
+    this.players[index] = value;
+    this.requestUpdate();
   }
 
   private handlePiattoChange(value: string): void {
-    this.piatto = parseFloat(value) || 0
+    this.piatto = parseFloat(value) || 0;
   }
 
   private validateAndCreateSession(): void {
-    this.errorMessage = ''
+    this.errorMessage = '';
 
-    const filledPlayers = this.players.filter((p) => p.trim().length > 0)
+    const filledPlayers = this.players.filter((p) => p.trim().length > 0);
 
     if (filledPlayers.length < 2) {
-      this.errorMessage = 'Inserisci almeno 2 nomi di giocatori'
-      return
+      this.errorMessage = 'Inserisci almeno 2 nomi di giocatori';
+      return;
     }
 
     if (this.piatto < 0) {
-      this.errorMessage = 'Il valore del piatto deve essere non negativo'
-      return
+      this.errorMessage = 'Il valore del piatto deve essere non negativo';
+      return;
     }
 
     this.dispatchEvent(
@@ -43,7 +43,7 @@ export class GameSetup extends LitElement {
           piatto: this.piatto,
         },
       })
-    )
+    );
   }
 
   render() {
@@ -66,16 +66,15 @@ export class GameSetup extends LitElement {
           <div class="form-section">
             <label>Giocatori (almeno 2)</label>
             ${this.players.map(
-              (player, index) =>
-                html`
-                  <input
-                    type="text"
-                    .value=${player}
-                    @input=${(e: Event) =>
-                      this.handlePlayerNameChange(index, (e.target as HTMLInputElement).value)}
-                    placeholder="Nome Giocatore ${index + 1}"
-                  />
-                `
+              (player, index) => html`
+                <input
+                  type="text"
+                  .value=${player}
+                  @input=${(e: Event) =>
+                    this.handlePlayerNameChange(index, (e.target as HTMLInputElement).value)}
+                  placeholder="Nome Giocatore ${index + 1}"
+                />
+              `
             )}
           </div>
 
@@ -84,19 +83,40 @@ export class GameSetup extends LitElement {
           <div class="disclaimer">
             <h3>⚠️ Dichiarazione di Responsabilità</h3>
             <ul>
-              <li><strong>Gioco d'azzardo illegale:</strong> Ricorda che il gioco d'azzardo è illegale in molte giurisdizioni. Anche se Bestia potrebbe sembrare un gioco legale, verifica le leggi locali prima di giocare con denaro reale.</li>
-              <li><strong>Gioca responsabilmente:</strong> Stabilisci un limite di scommessa prima di iniziare e non superarlo.</li>
-              <li><strong>Non sei obbligato:</strong> Nessuno è obbligato a giocare. Se il gioco cessa di essere divertente, smetti di giocare.</li>
-              <li><strong>Dati locali:</strong> Tutti i dati del gioco vengono salvati localmente nel tuo browser e non vengono inviati a server remoti. Se cancelli i dati del browser, la cronologia dei giochi andrà persa permanentemente. Esegui backup manualmente se desideri conservare i dati.</li>
-              <li><strong>Nessuna responsabilità:</strong> Gli sviluppatori di questa app non sono responsabili per perdite monetarie, conseguenze legali o danni derivanti dall'uso di questa applicazione.</li>
+              <li>
+                <strong>Gioco d'azzardo illegale:</strong> Ricorda che il gioco d'azzardo è illegale
+                in molte giurisdizioni. Anche se Bestia potrebbe sembrare un gioco legale, verifica
+                le leggi locali prima di giocare con denaro reale.
+              </li>
+              <li>
+                <strong>Gioca responsabilmente:</strong> Stabilisci un limite di scommessa prima di
+                iniziare e non superarlo.
+              </li>
+              <li>
+                <strong>Non sei obbligato:</strong> Nessuno è obbligato a giocare. Se il gioco cessa
+                di essere divertente, smetti di giocare.
+              </li>
+              <li>
+                <strong>Dati locali:</strong> Tutti i dati del gioco vengono salvati localmente nel
+                tuo browser e non vengono inviati a server remoti. Se cancelli i dati del browser,
+                la cronologia dei giochi andrà persa permanentemente. Esegui backup manualmente se
+                desideri conservare i dati.
+              </li>
+              <li>
+                <strong>Nessuna responsabilità:</strong> Gli sviluppatori di questa app non sono
+                responsabili per perdite monetarie, conseguenze legali o danni derivanti dall'uso di
+                questa applicazione.
+              </li>
             </ul>
-            <p class="disclaimer-footer">Utilizzando questa app, accetti che hai letto e compreso questa dichiarazione.</p>
+            <p class="disclaimer-footer">
+              Utilizzando questa app, accetti che hai letto e compreso questa dichiarazione.
+            </p>
           </div>
 
           <button class="create-btn" @click=${this.validateAndCreateSession}>Inizia Partita</button>
         </div>
       </div>
-    `
+    `;
   }
 
   static styles = css`
@@ -235,11 +255,11 @@ export class GameSetup extends LitElement {
     .create-btn:active {
       background: #1d4ed8;
     }
-  `
+  `;
 }
 
 declare global {
   interface HTMLElementTagNameMap {
-    'game-setup': GameSetup
+    'game-setup': GameSetup;
   }
 }

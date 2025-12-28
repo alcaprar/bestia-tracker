@@ -1,280 +1,305 @@
-import { LitElement, css, html } from 'lit'
-import { customElement, state } from 'lit/decorators.js'
-import type { GameSession } from './types.js'
-import { StorageService } from './storage.js'
-import { getShareUrl, decodeGameFromSharing } from './utils/sharing.js'
-import './components/game-setup.js'
-import './components/player-list.js'
-import './components/game-actions.js'
-import './components/game-history.js'
-import './components/game-settings.js'
-import './components/game-stats.js'
-import './components/games-list.js'
-import './components/share-game-modal.js'
+import { LitElement, css, html } from 'lit';
+import { customElement, state } from 'lit/decorators.js';
+import type { GameSession } from './types.js';
+import { StorageService } from './storage.js';
+import { getShareUrl, decodeGameFromSharing } from './utils/sharing.js';
+import './components/game-setup.js';
+import './components/player-list.js';
+import './components/game-actions.js';
+import './components/game-history.js';
+import './components/game-settings.js';
+import './components/game-stats.js';
+import './components/games-list.js';
+import './components/share-game-modal.js';
 
-type TabType = 'record' | 'history' | 'settings' | 'statistics'
-type Route = 'games' | 'game-new' | 'game-play'
+type TabType = 'record' | 'history' | 'settings' | 'statistics';
+type Route = 'games' | 'game-new' | 'game-play';
 
 @customElement('bestia-app')
 export class BestiaApp extends LitElement {
   @state()
-  private session: GameSession | null = null
+  private session: GameSession | null = null;
 
   @state()
-  private activeTab: TabType = 'record'
+  private activeTab: TabType = 'record';
 
   @state()
-  private currentRoute: Route = 'games'
+  private currentRoute: Route = 'games';
 
   @state()
-  private allGames = StorageService.getAllGames()
+  private allGames = StorageService.getAllGames();
 
   @state()
-  private currentShareUrl: string = ''
+  private currentShareUrl: string = '';
 
   @state()
-  private showPotInfoPopover: boolean = false
+  private showPotInfoPopover: boolean = false;
 
-  private boundHandleRouteChange = () => this.handleRouteChange()
+  private boundHandleRouteChange = () => this.handleRouteChange();
 
   connectedCallback() {
-    super.connectedCallback()
-    window.addEventListener('hashchange', this.boundHandleRouteChange)
+    super.connectedCallback();
+    window.addEventListener('hashchange', this.boundHandleRouteChange);
 
     // Handle shared games from query parameter
-    this.handleSharedGame()
+    this.handleSharedGame();
 
-    this.handleRouteChange()
+    this.handleRouteChange();
   }
 
   disconnectedCallback() {
-    super.disconnectedCallback()
-    window.removeEventListener('hashchange', this.boundHandleRouteChange)
+    super.disconnectedCallback();
+    window.removeEventListener('hashchange', this.boundHandleRouteChange);
   }
 
   private handleSharedGame(): void {
     // Check if there's a share query parameter
-    const params = new URLSearchParams(window.location.search)
-    const shareParam = params.get('share')
+    const params = new URLSearchParams(window.location.search);
+    const shareParam = params.get('share');
 
     if (shareParam) {
       // Decode the shared game
-      const sharedSession = decodeGameFromSharing(shareParam)
+      const sharedSession = decodeGameFromSharing(shareParam);
       if (sharedSession) {
         // Check if a game with this ID already exists
-        const existingGame = StorageService.getGameById(sharedSession.id)
+        const existingGame = StorageService.getGameById(sharedSession.id);
 
-        let importedSession: GameSession
-        let isUpdate = false
+        let importedSession: GameSession;
+        let isUpdate = false;
 
         if (existingGame) {
           // Update existing game
           importedSession = {
             ...sharedSession,
             updatedAt: Date.now(),
-          }
-          isUpdate = true
+          };
+          isUpdate = true;
         } else {
           // Create new game with same ID as shared game
           importedSession = {
             ...sharedSession,
             createdAt: Date.now(),
             updatedAt: Date.now(),
-          }
+          };
         }
 
-        StorageService.saveSession(importedSession)
-        this.allGames = StorageService.getAllGames()
+        StorageService.saveSession(importedSession);
+        this.allGames = StorageService.getAllGames();
 
         // Clean up the URL to remove the share parameter
-        window.history.replaceState({}, document.title, window.location.pathname)
+        window.history.replaceState({}, document.title, window.location.pathname);
 
         // Show a success message
-        const action = isUpdate ? 'aggiornata' : 'importata'
-        const playerNames = importedSession.players.map((p) => p.name).join(', ')
-        alert(`Partita ${action} con successo! "${playerNames}"`)
+        const action = isUpdate ? 'aggiornata' : 'importata';
+        const playerNames = importedSession.players.map((p) => p.name).join(', ');
+        alert(`Partita ${action} con successo! "${playerNames}"`);
       }
     }
   }
 
   private handleRouteChange(): void {
-    const hash = window.location.hash.slice(1) || 'games'
-    const parts = hash.split('/').filter((p) => p)
-    const [route, ...params] = parts
+    const hash = window.location.hash.slice(1) || 'games';
+    const parts = hash.split('/').filter((p) => p);
+    const [route, ...params] = parts;
 
     if (route === 'games') {
-      this.currentRoute = 'games'
-      this.session = null
-      this.allGames = StorageService.getAllGames()
-      this.activeTab = 'record'
+      this.currentRoute = 'games';
+      this.session = null;
+      this.allGames = StorageService.getAllGames();
+      this.activeTab = 'record';
     } else if (route === 'game' && params[0] === 'new') {
-      this.currentRoute = 'game-new'
-      this.session = null
-      this.activeTab = 'record'
+      this.currentRoute = 'game-new';
+      this.session = null;
+      this.activeTab = 'record';
     } else if (route === 'game' && params[0]) {
       // Load specific game
-      const gameId = params[0]
-      const tabParam = params[1] as TabType | undefined
-      const game = StorageService.getGameById(gameId)
+      const gameId = params[0];
+      const tabParam = params[1] as TabType | undefined;
+      const game = StorageService.getGameById(gameId);
       if (game) {
-        StorageService.setCurrentGame(gameId)
-        this.session = game.session
-        this.currentRoute = 'game-play'
+        StorageService.setCurrentGame(gameId);
+        this.session = game.session;
+        this.currentRoute = 'game-play';
         // Set tab if provided, otherwise default to record
         if (tabParam && ['record', 'history', 'settings', 'statistics'].includes(tabParam)) {
-          this.activeTab = tabParam
+          this.activeTab = tabParam;
         } else {
-          this.activeTab = 'record'
+          this.activeTab = 'record';
         }
       } else {
         // Game not found, go back to games list
-        window.location.hash = '/games'
+        window.location.hash = '/games';
       }
     }
   }
 
   private navigateToNewGame(): void {
-    window.location.hash = '/game/new'
+    window.location.hash = '/game/new';
   }
 
   private navigateToGame(gameId: string): void {
-    window.location.hash = `/game/${gameId}`
+    window.location.hash = `/game/${gameId}`;
   }
 
   private navigateToTab(tab: TabType): void {
     if (this.session) {
-      window.location.hash = `/game/${this.session.id}/${tab}`
+      window.location.hash = `/game/${this.session.id}/${tab}`;
     }
   }
 
   private handleSessionCreate(event: CustomEvent<{ players: string[]; piatto: number }>): void {
-    const { players, piatto } = event.detail
-    const newSession = StorageService.createNewSession(players, piatto)
+    const { players, piatto } = event.detail;
+    const newSession = StorageService.createNewSession(players, piatto);
     // Update the URL to reflect the new game
     if (newSession) {
-      window.location.hash = `/game/${newSession.id}`
+      window.location.hash = `/game/${newSession.id}`;
     }
   }
 
   private handleNewGame(): void {
-    this.navigateToNewGame()
+    this.navigateToNewGame();
   }
 
   private handleGamesListSelection(event: CustomEvent<{ gameId: string }>): void {
-    this.navigateToGame(event.detail.gameId)
+    this.navigateToGame(event.detail.gameId);
   }
 
   private handleDealerSelected(event: CustomEvent<{ dealerId: string; dealerName: string }>): void {
     if (this.session) {
-      const updatedSession = StorageService.recordDealerSelection(this.session, event.detail.dealerId)
-      this.session = { ...updatedSession }
-      this.requestUpdate()
+      const updatedSession = StorageService.recordDealerSelection(
+        this.session,
+        event.detail.dealerId
+      );
+      this.session = { ...updatedSession };
+      this.requestUpdate();
     }
   }
 
-  private handleRoundRecorded(event: CustomEvent<{ prese: Map<string, number>; bestia: string[] }>): void {
+  private handleRoundRecorded(
+    event: CustomEvent<{ prese: Map<string, number>; bestia: string[] }>
+  ): void {
     if (this.session) {
-      const updatedSession = StorageService.recordRound(this.session, event.detail.prese, event.detail.bestia)
+      const updatedSession = StorageService.recordRound(
+        this.session,
+        event.detail.prese,
+        event.detail.bestia
+      );
       // Force reactivity by reassigning the entire session object
-      this.session = { ...updatedSession }
-      this.requestUpdate()
+      this.session = { ...updatedSession };
+      this.requestUpdate();
     }
   }
 
   private handleGiroChiusoRecorded(): void {
     if (this.session) {
-      const updatedSession = StorageService.recordGiroChiuso(this.session)
+      const updatedSession = StorageService.recordGiroChiuso(this.session);
       // Force reactivity by reassigning the entire session object
-      this.session = { ...updatedSession }
-      this.requestUpdate()
+      this.session = { ...updatedSession };
+      this.requestUpdate();
     }
   }
 
-  private handleManualEntryRecorded(event: CustomEvent<{ amounts: Map<string, number>; description?: string }>): void {
+  private handleManualEntryRecorded(
+    event: CustomEvent<{ amounts: Map<string, number>; description?: string }>
+  ): void {
     if (this.session) {
-      const updatedSession = StorageService.recordManualEntry(this.session, event.detail.amounts, event.detail.description)
-      this.session = { ...updatedSession }
-      this.requestUpdate()
+      const updatedSession = StorageService.recordManualEntry(
+        this.session,
+        event.detail.amounts,
+        event.detail.description
+      );
+      this.session = { ...updatedSession };
+      this.requestUpdate();
     }
   }
 
   private handleDeleteEvent(event: CustomEvent<{ eventId: string }>): void {
     if (this.session) {
-      const eventId = event.detail.eventId
-      this.session.events = this.session.events.filter((e) => e.id !== eventId)
-      StorageService.saveSession(this.session)
-      this.session = { ...this.session }
-      this.requestUpdate()
+      const eventId = event.detail.eventId;
+      this.session.events = this.session.events.filter((e) => e.id !== eventId);
+      StorageService.saveSession(this.session);
+      this.session = { ...this.session };
+      this.requestUpdate();
     }
   }
 
   private handlePiattoChanged(event: CustomEvent<{ piatto: number }>): void {
     if (this.session) {
-      const updatedSession = StorageService.updatePiatto(this.session, event.detail.piatto)
-      this.session = { ...updatedSession }
-      this.requestUpdate()
+      const updatedSession = StorageService.updatePiatto(this.session, event.detail.piatto);
+      this.session = { ...updatedSession };
+      this.requestUpdate();
     }
   }
 
   private handleCurrencyChanged(event: CustomEvent<{ currency: string }>): void {
     if (this.session) {
-      const updatedSession = StorageService.updateCurrency(this.session, event.detail.currency)
-      this.session = { ...updatedSession }
-      this.requestUpdate()
+      const updatedSession = StorageService.updateCurrency(this.session, event.detail.currency);
+      this.session = { ...updatedSession };
+      this.requestUpdate();
     }
   }
 
   private handlePlayerOrderChanged(event: CustomEvent<{ playerIds: string[] }>): void {
     if (this.session) {
-      const updatedSession = StorageService.updatePlayerOrder(this.session, event.detail.playerIds)
-      this.session = { ...updatedSession }
-      this.requestUpdate()
+      const updatedSession = StorageService.updatePlayerOrder(this.session, event.detail.playerIds);
+      this.session = { ...updatedSession };
+      this.requestUpdate();
     }
   }
 
   private handlePlayerAdded(event: CustomEvent<{ playerName: string }>): void {
     if (this.session) {
-      const updatedSession = StorageService.addPlayer(this.session, event.detail.playerName)
-      this.session = { ...updatedSession }
-      this.requestUpdate()
+      const updatedSession = StorageService.addPlayer(this.session, event.detail.playerName);
+      this.session = { ...updatedSession };
+      this.requestUpdate();
     }
   }
 
-  private handlePlayerStatusChanged(event: CustomEvent<{ playerId: string; isActive: boolean }>): void {
+  private handlePlayerStatusChanged(
+    event: CustomEvent<{ playerId: string; isActive: boolean }>
+  ): void {
     if (this.session) {
-      const updatedSession = StorageService.togglePlayerActive(this.session, event.detail.playerId, event.detail.isActive)
-      this.session = { ...updatedSession }
-      this.requestUpdate()
+      const updatedSession = StorageService.togglePlayerActive(
+        this.session,
+        event.detail.playerId,
+        event.detail.isActive
+      );
+      this.session = { ...updatedSession };
+      this.requestUpdate();
     }
   }
 
   private openShareModal(): void {
     if (this.session) {
-      this.currentShareUrl = getShareUrl(this.session)
+      this.currentShareUrl = getShareUrl(this.session);
       // Get modal reference using querySelector
-      const modal = this.shadowRoot?.querySelector('share-game-modal') as any
+      const modal = this.shadowRoot?.querySelector('share-game-modal') as any;
       if (modal) {
-        modal.openModal()
+        modal.openModal();
       }
     }
   }
 
   private togglePotInfo(): void {
-    this.showPotInfoPopover = !this.showPotInfoPopover
+    this.showPotInfoPopover = !this.showPotInfoPopover;
   }
 
   private closePotInfo(): void {
-    this.showPotInfoPopover = false
+    this.showPotInfoPopover = false;
   }
 
   render() {
     const footer = html`
       <footer class="footer">
-        <a href="https://github.com/alcaprar/bestia-tracker" target="_blank" rel="noopener noreferrer">
+        <a
+          href="https://github.com/alcaprar/bestia-tracker"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
           GitHub Repository
         </a>
       </footer>
-    `
+    `;
 
     // Games list route
     if (this.currentRoute === 'games') {
@@ -292,7 +317,7 @@ export class BestiaApp extends LitElement {
           </div>
           ${footer}
         </div>
-      `
+      `;
     }
 
     // New game setup route
@@ -301,25 +326,42 @@ export class BestiaApp extends LitElement {
         <div class="app-wrapper">
           <div class="container">
             <header class="header">
-              <button class="back-btn" @click=${() => { window.location.hash = '/games' }}>← Giochi</button>
+              <button
+                class="back-btn"
+                @click=${() => {
+                  window.location.hash = '/games';
+                }}
+              >
+                ← Giochi
+              </button>
               <h1>Nuova Partita</h1>
             </header>
           </div>
           <game-setup @create-session=${this.handleSessionCreate}></game-setup>
           ${footer}
         </div>
-      `
+      `;
     }
 
     // Game play route
     if (this.currentRoute === 'game-play' && this.session) {
       return html`
         <div class="app-wrapper">
-          <share-game-modal .shareUrl=${this.currentShareUrl} .session=${this.session}></share-game-modal>
+          <share-game-modal
+            .shareUrl=${this.currentShareUrl}
+            .session=${this.session}
+          ></share-game-modal>
 
           <div class="container">
             <header class="header">
-              <button class="back-btn" @click=${() => { window.location.hash = '/games' }}>← Giochi</button>
+              <button
+                class="back-btn"
+                @click=${() => {
+                  window.location.hash = '/games';
+                }}
+              >
+                ← Giochi
+              </button>
               <h1>Bestia</h1>
               <button class="share-btn" @click=${this.openShareModal}>📤 Condividi</button>
             </header>
@@ -327,7 +369,9 @@ export class BestiaApp extends LitElement {
             <div class="game-info">
               <div class="info-card">
                 <span class="label">Piatto</span>
-                <span class="value">${this.session?.currency || '€'}${(this.session.piatto || 0).toFixed(2)}</span>
+                <span class="value"
+                  >${this.session?.currency || '€'}${(this.session.piatto || 0).toFixed(2)}</span
+                >
               </div>
               <div class="info-card pot-info-card">
                 <div class="info-card-header">
@@ -340,32 +384,79 @@ export class BestiaApp extends LitElement {
                     ℹ️
                   </button>
                 </div>
-                <span class="value">${this.session?.currency || '€'}${StorageService.calculateCurrentPot(this.session).toFixed(2)}</span>
+                <span class="value"
+                  >${this.session?.currency || '€'}${StorageService.calculateCurrentPot(
+                    this.session
+                  ).toFixed(2)}</span
+                >
 
-                ${this.showPotInfoPopover ? html`
-                  <div class="pot-info-popover">
-                    <button class="close-btn" @click=${this.closePotInfo}>✕</button>
-                    <h3>Divisione del Banco</h3>
-                    <ul class="pot-division-list">
-                      <li><strong>${this.session?.currency || '€'}${(StorageService.calculateCurrentPot(this.session) / 3).toFixed(2)}</strong> → una presa</li>
-                      <li><strong>${this.session?.currency || '€'}${((StorageService.calculateCurrentPot(this.session) / 3) * 2).toFixed(2)}</strong> → 2 prese</li>
-                      <li><strong>${this.session?.currency || '€'}${(StorageService.calculateCurrentPot(this.session) / 6).toFixed(2)}</strong> → una presa in due</li>
-                      <li><strong>${this.session?.currency || '€'}${(StorageService.calculateCurrentPot(this.session) / 9).toFixed(2)}</strong> → una presa in tre</li>
-                    </ul>
-                  </div>
-                ` : ''}
-
-                ${this.showPotInfoPopover ? html`
-                  <div class="popover-backdrop" @click=${this.closePotInfo}></div>
-                ` : ''}
+                ${this.showPotInfoPopover
+                  ? html`
+                      <div class="pot-info-popover">
+                        <button class="close-btn" @click=${this.closePotInfo}>✕</button>
+                        <h3>Divisione del Banco</h3>
+                        <ul class="pot-division-list">
+                          <li>
+                            <strong
+                              >${this.session?.currency || '€'}${(
+                                StorageService.calculateCurrentPot(this.session) / 3
+                              ).toFixed(2)}</strong
+                            >
+                            → una presa
+                          </li>
+                          <li>
+                            <strong
+                              >${this.session?.currency || '€'}${(
+                                (StorageService.calculateCurrentPot(this.session) / 3) *
+                                2
+                              ).toFixed(2)}</strong
+                            >
+                            → 2 prese
+                          </li>
+                          <li>
+                            <strong
+                              >${this.session?.currency || '€'}${(
+                                StorageService.calculateCurrentPot(this.session) / 6
+                              ).toFixed(2)}</strong
+                            >
+                            → una presa in due
+                          </li>
+                          <li>
+                            <strong
+                              >${this.session?.currency || '€'}${(
+                                StorageService.calculateCurrentPot(this.session) / 9
+                              ).toFixed(2)}</strong
+                            >
+                            → una presa in tre
+                          </li>
+                        </ul>
+                      </div>
+                    `
+                  : ''}
+                ${this.showPotInfoPopover
+                  ? html` <div class="popover-backdrop" @click=${this.closePotInfo}></div> `
+                  : ''}
               </div>
               <div class="info-card">
                 <span class="label">Mazziere</span>
-                <span class="value">${this.session ? this.session.players.find((p) => p.id === StorageService.getCurrentDealerId(this.session!))?.name || 'Unknown' : 'Unknown'}</span>
+                <span class="value"
+                  >${this.session
+                    ? this.session.players.find(
+                        (p) => p.id === StorageService.getCurrentDealerId(this.session!)
+                      )?.name || 'Unknown'
+                    : 'Unknown'}</span
+                >
               </div>
               <div class="info-card">
                 <span class="label">Inizio Partita</span>
-                <span class="value">${this.session ? new Date(this.session.createdAt).toLocaleString('it-IT', { dateStyle: 'short', timeStyle: 'short' }) : ''}</span>
+                <span class="value"
+                  >${this.session
+                    ? new Date(this.session.createdAt).toLocaleString('it-IT', {
+                        dateStyle: 'short',
+                        timeStyle: 'short',
+                      })
+                    : ''}</span
+                >
               </div>
             </div>
 
@@ -408,9 +499,17 @@ export class BestiaApp extends LitElement {
                   ? html`
                       <game-actions
                         .players=${this.session.players}
-                        .currentDealer=${this.session ? this.session.players.find((p) => p.id === StorageService.getCurrentDealerId(this.session!))?.name || 'Unknown' : 'Unknown'}
-                        .nextDealerId=${this.session ? StorageService.getNextDealerId(this.session) : ''}
-                        .currentPot=${this.session ? StorageService.calculateCurrentPot(this.session) : 0}
+                        .currentDealer=${this.session
+                          ? this.session.players.find(
+                              (p) => p.id === StorageService.getCurrentDealerId(this.session!)
+                            )?.name || 'Unknown'
+                          : 'Unknown'}
+                        .nextDealerId=${this.session
+                          ? StorageService.getNextDealerId(this.session)
+                          : ''}
+                        .currentPot=${this.session
+                          ? StorageService.calculateCurrentPot(this.session)
+                          : 0}
                         .piatto=${this.session?.piatto || 0}
                         .currency=${this.session?.currency || '€'}
                         @dealer-selected=${this.handleDealerSelected}
@@ -441,19 +540,17 @@ export class BestiaApp extends LitElement {
                             @player-status-changed=${this.handlePlayerStatusChanged}
                           ></game-settings>
                         `
-                      : html`
-                          <game-stats .session=${this.session}></game-stats>
-                        `}
+                      : html` <game-stats .session=${this.session}></game-stats> `}
               </div>
             </div>
           </div>
           ${footer}
         </div>
-      `
+      `;
     }
 
     // Fallback - should not happen, but show setup as default
-    return html`<game-setup @create-session=${this.handleSessionCreate}></game-setup>`
+    return html`<game-setup @create-session=${this.handleSessionCreate}></game-setup>`;
   }
 
   static styles = css`
@@ -783,11 +880,11 @@ export class BestiaApp extends LitElement {
         background: rgba(0, 0, 0, 0.3);
       }
     }
-  `
+  `;
 }
 
 declare global {
   interface HTMLElementTagNameMap {
-    'bestia-app': BestiaApp
+    'bestia-app': BestiaApp;
   }
 }

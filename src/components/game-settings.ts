@@ -1,60 +1,60 @@
-import { LitElement, css, html } from 'lit'
-import { customElement, property, state } from 'lit/decorators.js'
-import type { Player } from '../types.js'
-import type { PropertyValues } from 'lit'
+import { LitElement, css, html } from 'lit';
+import { customElement, property, state } from 'lit/decorators.js';
+import type { Player } from '../types.js';
+import type { PropertyValues } from 'lit';
 
 @customElement('game-settings')
 export class GameSettings extends LitElement {
   @property({ type: Array })
-  players: Player[] = []
+  players: Player[] = [];
 
   @property({ type: Number })
-  piatto: number = 0.3
+  piatto: number = 0.3;
 
   @property({ type: String })
-  currency: string = '€'
+  currency: string = '€';
 
   @state()
-  private editedPiatto: number = 0.3
+  private editedPiatto: number = 0.3;
 
   @state()
-  private editedCurrency: string = '€'
+  private editedCurrency: string = '€';
 
   @state()
-  private playerOrder: Player[] = []
+  private playerOrder: Player[] = [];
 
   @state()
-  private draggedIndex: number | null = null
+  private draggedIndex: number | null = null;
 
   @state()
-  private newPlayerName: string = ''
+  private newPlayerName: string = '';
 
   connectedCallback() {
-    super.connectedCallback()
-    this.editedPiatto = this.piatto
-    this.editedCurrency = this.currency
-    this.playerOrder = [...this.players]
+    super.connectedCallback();
+    this.editedPiatto = this.piatto;
+    this.editedCurrency = this.currency;
+    this.playerOrder = [...this.players];
   }
 
   willUpdate(changedProperties: PropertyValues): void {
-    super.willUpdate(changedProperties)
+    super.willUpdate(changedProperties);
     // Sync playerOrder whenever players property changes
     if (changedProperties.has('players')) {
-      this.playerOrder = [...this.players]
+      this.playerOrder = [...this.players];
     }
     // Sync editedPiatto whenever piatto property changes
     if (changedProperties.has('piatto')) {
-      this.editedPiatto = this.piatto
+      this.editedPiatto = this.piatto;
     }
     // Sync editedCurrency whenever currency property changes
     if (changedProperties.has('currency')) {
-      this.editedCurrency = this.currency
+      this.editedCurrency = this.currency;
     }
   }
 
   private updatePiatto(e: Event): void {
-    const input = e.target as HTMLInputElement
-    this.editedPiatto = parseFloat(input.value) || 0
+    const input = e.target as HTMLInputElement;
+    this.editedPiatto = parseFloat(input.value) || 0;
   }
 
   private savePiatto(): void {
@@ -62,12 +62,12 @@ export class GameSettings extends LitElement {
       new CustomEvent('piatto-changed', {
         detail: { piatto: this.editedPiatto },
       })
-    )
+    );
   }
 
   private updateCurrency(e: Event): void {
-    const input = e.target as HTMLInputElement
-    this.editedCurrency = input.value
+    const input = e.target as HTMLInputElement;
+    this.editedCurrency = input.value;
   }
 
   private saveCurrency(): void {
@@ -75,30 +75,30 @@ export class GameSettings extends LitElement {
       new CustomEvent('currency-changed', {
         detail: { currency: this.editedCurrency },
       })
-    )
+    );
   }
 
   private startDrag(index: number): void {
-    this.draggedIndex = index
+    this.draggedIndex = index;
   }
 
   private dragOver(e: DragEvent): void {
-    e.preventDefault()
+    e.preventDefault();
   }
 
   private drop(index: number): void {
     if (this.draggedIndex === null || this.draggedIndex === index) {
-      this.draggedIndex = null
-      return
+      this.draggedIndex = null;
+      return;
     }
 
     // Swap players
-    const temp = this.playerOrder[this.draggedIndex]
-    this.playerOrder[this.draggedIndex] = this.playerOrder[index]
-    this.playerOrder[index] = temp
+    const temp = this.playerOrder[this.draggedIndex];
+    this.playerOrder[this.draggedIndex] = this.playerOrder[index];
+    this.playerOrder[index] = temp;
 
-    this.draggedIndex = null
-    this.requestUpdate()
+    this.draggedIndex = null;
+    this.requestUpdate();
   }
 
   private savePlayerOrder(): void {
@@ -106,19 +106,19 @@ export class GameSettings extends LitElement {
       new CustomEvent('player-order-changed', {
         detail: { playerIds: this.playerOrder.map((p) => p.id) },
       })
-    )
+    );
   }
 
   private addPlayer(): void {
-    const name = this.newPlayerName.trim()
-    if (name.length === 0) return
+    const name = this.newPlayerName.trim();
+    if (name.length === 0) return;
 
     this.dispatchEvent(
       new CustomEvent('player-added', {
         detail: { playerName: name },
       })
-    )
-    this.newPlayerName = ''
+    );
+    this.newPlayerName = '';
   }
 
   private togglePlayerStatus(playerId: string, isActive: boolean): void {
@@ -126,7 +126,7 @@ export class GameSettings extends LitElement {
       new CustomEvent('player-status-changed', {
         detail: { playerId, isActive },
       })
-    )
+    );
   }
 
   render() {
@@ -182,12 +182,16 @@ export class GameSettings extends LitElement {
 
         <div class="settings-section">
           <h3>Ordine Giocatori</h3>
-          <p class="help-text">Trascinare per riordinare i giocatori. Questo determina la rotazione del mazziere.</p>
+          <p class="help-text">
+            Trascinare per riordinare i giocatori. Questo determina la rotazione del mazziere.
+          </p>
           <div class="player-list">
             ${this.playerOrder.map(
               (player, index) => html`
                 <div
-                  class="player-item ${this.draggedIndex === index ? 'dragging' : ''} ${!player.isActive ? 'inactive' : ''}"
+                  class="player-item ${this.draggedIndex === index
+                    ? 'dragging'
+                    : ''} ${!player.isActive ? 'inactive' : ''}"
                   draggable="true"
                   @dragstart=${() => this.startDrag(index)}
                   @dragover=${this.dragOver}
@@ -207,10 +211,12 @@ export class GameSettings extends LitElement {
               `
             )}
           </div>
-          <button class="save-btn large" @click=${this.savePlayerOrder}>Salva Ordine Giocatori</button>
+          <button class="save-btn large" @click=${this.savePlayerOrder}>
+            Salva Ordine Giocatori
+          </button>
         </div>
       </div>
-    `
+    `;
   }
 
   static styles = css`
@@ -450,11 +456,11 @@ export class GameSettings extends LitElement {
       width: 100%;
       padding: 1rem;
     }
-  `
+  `;
 }
 
 declare global {
   interface HTMLElementTagNameMap {
-    'game-settings': GameSettings
+    'game-settings': GameSettings;
   }
 }

@@ -1,35 +1,35 @@
-import type { GameSession, Player, GameEvent, Transaction } from './types.js'
+import type { GameSession, Player, GameEvent, Transaction } from './types.js';
 
-const GAMES_KEY = 'bestia-games'
-const CURRENT_GAME_KEY = 'bestia-current-game-id'
+const GAMES_KEY = 'bestia-games';
+const CURRENT_GAME_KEY = 'bestia-current-game-id';
 
 export interface SavedGame {
-  id: string
-  createdAt: number
-  session: GameSession
+  id: string;
+  createdAt: number;
+  session: GameSession;
 }
 
 export class StorageService {
   static getSession(): GameSession | null {
     try {
-      const currentGameId = localStorage.getItem(CURRENT_GAME_KEY)
-      if (!currentGameId) return null
+      const currentGameId = localStorage.getItem(CURRENT_GAME_KEY);
+      if (!currentGameId) return null;
 
-      const games = this.getAllGames()
-      const game = games.find((g) => g.id === currentGameId)
-      return game?.session || null
+      const games = this.getAllGames();
+      const game = games.find((g) => g.id === currentGameId);
+      return game?.session || null;
     } catch (error) {
-      console.error('Error reading from localStorage:', error)
-      return null
+      console.error('Error reading from localStorage:', error);
+      return null;
     }
   }
 
   static getAllGames(): SavedGame[] {
     try {
-      const data = localStorage.getItem(GAMES_KEY)
-      if (!data) return []
+      const data = localStorage.getItem(GAMES_KEY);
+      if (!data) return [];
 
-      const games: any[] = JSON.parse(data)
+      const games: any[] = JSON.parse(data);
       // Convert metadata Maps back from JSON
       return games.map((game) => ({
         ...game,
@@ -47,60 +47,62 @@ export class StorageService {
               }))
             : [],
         },
-      }))
+      }));
     } catch (error) {
-      console.error('Error reading games from localStorage:', error)
-      return []
+      console.error('Error reading games from localStorage:', error);
+      return [];
     }
   }
 
   static getGameById(gameId: string): SavedGame | null {
-    const games = this.getAllGames()
-    return games.find((g) => g.id === gameId) || null
+    const games = this.getAllGames();
+    return games.find((g) => g.id === gameId) || null;
   }
 
   static setCurrentGame(gameId: string): void {
-    localStorage.setItem(CURRENT_GAME_KEY, gameId)
+    localStorage.setItem(CURRENT_GAME_KEY, gameId);
   }
 
   static getCurrentGameId(): string | null {
-    return localStorage.getItem(CURRENT_GAME_KEY)
+    return localStorage.getItem(CURRENT_GAME_KEY);
   }
 
   static loadSessionOld(): GameSession | null {
     try {
-      const data = localStorage.getItem('bestia-game-session')
-      if (!data) return null
-      const session: GameSession = JSON.parse(data)
+      const data = localStorage.getItem('bestia-game-session');
+      if (!data) return null;
+      const session: GameSession = JSON.parse(data);
 
       // Ensure arrays are initialized
       if (!session.events) {
-        session.events = []
+        session.events = [];
       }
 
       // Convert metadata Maps back from JSON
       if (session.events) {
         session.events = session.events.map((event: any) => ({
           ...event,
-          metadata: event.metadata ? {
-            ...event.metadata,
-            prese: event.metadata.prese ? new Map(event.metadata.prese) : undefined,
-          } : undefined,
-        }))
+          metadata: event.metadata
+            ? {
+                ...event.metadata,
+                prese: event.metadata.prese ? new Map(event.metadata.prese) : undefined,
+              }
+            : undefined,
+        }));
       }
 
-      return session
+      return session;
     } catch (error) {
-      console.error('Error reading from localStorage:', error)
-      return null
+      console.error('Error reading from localStorage:', error);
+      return null;
     }
   }
 
   static saveSession(session: GameSession): void {
     try {
-      session.updatedAt = Date.now()
-      const gameId = session.id
-      const games = this.getAllGames()
+      session.updatedAt = Date.now();
+      const gameId = session.id;
+      const games = this.getAllGames();
 
       // Convert metadata Maps to arrays for JSON serialization
       const sessionToSave = {
@@ -110,23 +112,29 @@ export class StorageService {
           metadata: event.metadata
             ? {
                 ...event.metadata,
-                prese: event.metadata.prese ? Array.from(event.metadata.prese.entries()) : undefined,
+                prese: event.metadata.prese
+                  ? Array.from(event.metadata.prese.entries())
+                  : undefined,
               }
             : undefined,
         })),
-      }
+      };
 
       // Update or add the game
-      const gameIndex = games.findIndex((g) => g.id === gameId)
+      const gameIndex = games.findIndex((g) => g.id === gameId);
       if (gameIndex >= 0) {
-        games[gameIndex] = { id: gameId, createdAt: games[gameIndex].createdAt, session: sessionToSave as GameSession }
+        games[gameIndex] = {
+          id: gameId,
+          createdAt: games[gameIndex].createdAt,
+          session: sessionToSave as GameSession,
+        };
       } else {
-        games.push({ id: gameId, createdAt: Date.now(), session: sessionToSave as GameSession })
+        games.push({ id: gameId, createdAt: Date.now(), session: sessionToSave as GameSession });
       }
 
-      localStorage.setItem(GAMES_KEY, JSON.stringify(games))
+      localStorage.setItem(GAMES_KEY, JSON.stringify(games));
     } catch (error) {
-      console.error('Error writing to localStorage:', error)
+      console.error('Error writing to localStorage:', error);
     }
   }
 
@@ -136,7 +144,7 @@ export class StorageService {
       name,
       balance: 0,
       isActive: true,
-    }))
+    }));
 
     const session: GameSession = {
       id: Math.random().toString(36).substr(2, 9),
@@ -146,11 +154,11 @@ export class StorageService {
       events: [],
       createdAt: Date.now(),
       updatedAt: Date.now(),
-    }
+    };
 
-    this.saveSession(session)
-    this.setCurrentGame(session.id)
-    return session
+    this.saveSession(session);
+    this.setCurrentGame(session.id);
+    return session;
   }
 
   static recordRound(
@@ -158,37 +166,37 @@ export class StorageService {
     preseMap: Map<string, number>,
     bestiaPlayerIds: string[]
   ): GameSession {
-    const dealerPlayerId = session.players[session.currentDealerIndex].id
-    const potAtStart = this.calculateCurrentPot(session)
+    const dealerPlayerId = session.players[session.currentDealerIndex].id;
+    const potAtStart = this.calculateCurrentPot(session);
 
     // Calculate payouts
-    const payouts = new Map<string, number>()
+    const payouts = new Map<string, number>();
     session.players.forEach((player) => {
-      payouts.set(player.id, 0)
-    })
+      payouts.set(player.id, 0);
+    });
 
     // Get winners (players with prese > 0)
-    const winners = Array.from(preseMap.entries()).filter(([_, prese]) => prese > 0)
-    const totalPrese = winners.reduce((sum, [_, prese]) => sum + prese, 0)
+    const winners = Array.from(preseMap.entries()).filter(([_, prese]) => prese > 0);
+    const totalPrese = winners.reduce((sum, [_, prese]) => sum + prese, 0);
 
     if (bestiaPlayerIds.length > 0) {
       // Some players went bestia
       // Split pot among winners proportionally by prese
       winners.forEach(([playerId, prese]) => {
-        const share = (prese / totalPrese) * potAtStart
-        payouts.set(playerId, (payouts.get(playerId) || 0) + share)
-      })
+        const share = (prese / totalPrese) * potAtStart;
+        payouts.set(playerId, (payouts.get(playerId) || 0) + share);
+      });
 
       // Bestia players pay the pot amount
       bestiaPlayerIds.forEach((playerId) => {
-        payouts.set(playerId, (payouts.get(playerId) || 0) - potAtStart)
-      })
+        payouts.set(playerId, (payouts.get(playerId) || 0) - potAtStart);
+      });
     } else {
       // No bestia: winners split pot
       winners.forEach(([playerId, prese]) => {
-        const share = (prese / totalPrese) * potAtStart
-        payouts.set(playerId, (payouts.get(playerId) || 0) + share)
-      })
+        const share = (prese / totalPrese) * potAtStart;
+        payouts.set(playerId, (payouts.get(playerId) || 0) + share);
+      });
     }
 
     // Create transactions array
@@ -197,7 +205,7 @@ export class StorageService {
       .map(([playerId, amount]) => ({
         playerId,
         amount,
-      }))
+      }));
 
     // Record round_end event
     const event: GameEvent = {
@@ -210,27 +218,27 @@ export class StorageService {
         prese: preseMap,
         bestiaPlayers: bestiaPlayerIds,
       },
-    }
+    };
 
-    session.events.push(event)
+    session.events.push(event);
 
     // Rotate dealer
-    session.currentDealerIndex = (session.currentDealerIndex + 1) % session.players.length
+    session.currentDealerIndex = (session.currentDealerIndex + 1) % session.players.length;
 
-    this.saveSession(session)
-    return session
+    this.saveSession(session);
+    return session;
   }
 
   static recordDealerSelection(session: GameSession, dealerPlayerId: string): GameSession {
-    const dealer = session.players.find((p) => p.id === dealerPlayerId)
-    if (!dealer) return session
+    const dealer = session.players.find((p) => p.id === dealerPlayerId);
+    if (!dealer) return session;
 
     // Find the new dealer's index
-    const dealerIndex = session.players.findIndex((p) => p.id === dealerPlayerId)
-    if (dealerIndex === -1) return session
+    const dealerIndex = session.players.findIndex((p) => p.id === dealerPlayerId);
+    if (dealerIndex === -1) return session;
 
     // Update current dealer
-    session.currentDealerIndex = dealerIndex
+    session.currentDealerIndex = dealerIndex;
 
     // Dealer puts in the ante
     const transactions: Transaction[] = [
@@ -238,7 +246,7 @@ export class StorageService {
         playerId: dealerPlayerId,
         amount: -session.piatto,
       },
-    ]
+    ];
 
     const event: GameEvent = {
       id: Math.random().toString(36).substr(2, 9),
@@ -248,22 +256,22 @@ export class StorageService {
       metadata: {
         dealerPlayerId,
       },
-    }
+    };
 
-    session.events.push(event)
+    session.events.push(event);
 
-    this.saveSession(session)
-    return session
+    this.saveSession(session);
+    return session;
   }
 
   static recordGiroChiuso(session: GameSession): GameSession {
-    const dealerPlayerId = session.players[session.currentDealerIndex].id
+    const dealerPlayerId = session.players[session.currentDealerIndex].id;
 
     // All players pay the basic piatto amount
     const transactions: Transaction[] = session.players.map((player) => ({
       playerId: player.id,
       amount: -session.piatto,
-    }))
+    }));
 
     const event: GameEvent = {
       id: Math.random().toString(36).substr(2, 9),
@@ -273,15 +281,15 @@ export class StorageService {
       metadata: {
         dealerPlayerId,
       },
-    }
+    };
 
-    session.events.push(event)
+    session.events.push(event);
 
     // Rotate dealer
-    session.currentDealerIndex = (session.currentDealerIndex + 1) % session.players.length
+    session.currentDealerIndex = (session.currentDealerIndex + 1) % session.players.length;
 
-    this.saveSession(session)
-    return session
+    this.saveSession(session);
+    return session;
   }
 
   static recordManualEntry(
@@ -295,7 +303,7 @@ export class StorageService {
       .map(([playerId, amount]) => ({
         playerId,
         amount,
-      }))
+      }));
 
     const event: GameEvent = {
       id: Math.random().toString(36).substr(2, 9),
@@ -303,86 +311,86 @@ export class StorageService {
       timestamp: Date.now(),
       transactions,
       metadata: description ? { description } : undefined,
-    }
+    };
 
-    session.events.push(event)
-    this.saveSession(session)
-    return session
+    session.events.push(event);
+    this.saveSession(session);
+    return session;
   }
 
   static calculateCurrentPot(session: GameSession): number {
     // Pot is the negative sum of all transactions
     // (payments are negative, so summing them gives us the pot amount)
-    let totalTransactions = 0
+    let totalTransactions = 0;
 
     for (const event of session.events) {
       for (const transaction of event.transactions) {
-        totalTransactions += transaction.amount
+        totalTransactions += transaction.amount;
       }
     }
 
     // Negate because payments are negative
-    return -totalTransactions
+    return -totalTransactions;
   }
 
   static calculatePlayerBalances(session: GameSession): Map<string, number> {
-    const balances = new Map<string, number>()
+    const balances = new Map<string, number>();
 
     // Initialize all players with 0 balance
     session.players.forEach((player) => {
-      balances.set(player.id, 0)
-    })
+      balances.set(player.id, 0);
+    });
 
     // Replay events to calculate balances
     for (const event of session.events) {
       event.transactions.forEach(({ playerId, amount }) => {
-        balances.set(playerId, (balances.get(playerId) || 0) + amount)
-      })
+        balances.set(playerId, (balances.get(playerId) || 0) + amount);
+      });
     }
 
-    return balances
+    return balances;
   }
 
   static getCurrentDealerId(session: GameSession): string {
     // Find the most recent dealer_pay event
     for (let i = session.events.length - 1; i >= 0; i--) {
-      const event = session.events[i]
+      const event = session.events[i];
       if (event.type === 'dealer_pay') {
-        return event.metadata?.dealerPlayerId || session.players[0].id
+        return event.metadata?.dealerPlayerId || session.players[0].id;
       }
     }
     // If no dealer events, return first player
-    return session.players[0].id
+    return session.players[0].id;
   }
 
   static getNextDealerId(session: GameSession): string {
     // Get the current dealer
-    const currentDealerId = this.getCurrentDealerId(session)
-    const currentDealerIndex = session.players.findIndex((p) => p.id === currentDealerId)
+    const currentDealerId = this.getCurrentDealerId(session);
+    const currentDealerIndex = session.players.findIndex((p) => p.id === currentDealerId);
 
     // Return the next player in order
-    const nextIndex = (currentDealerIndex + 1) % session.players.length
-    return session.players[nextIndex].id
+    const nextIndex = (currentDealerIndex + 1) % session.players.length;
+    return session.players[nextIndex].id;
   }
 
   static updatePiatto(session: GameSession, newPiatto: number): GameSession {
-    session.piatto = newPiatto
-    this.saveSession(session)
-    return session
+    session.piatto = newPiatto;
+    this.saveSession(session);
+    return session;
   }
 
   static updateCurrency(session: GameSession, newCurrency: string): GameSession {
-    session.currency = newCurrency
-    this.saveSession(session)
-    return session
+    session.currency = newCurrency;
+    this.saveSession(session);
+    return session;
   }
 
   static updatePlayerOrder(session: GameSession, playerIds: string[]): GameSession {
     // Reorder players based on the new order
-    const playerMap = new Map(session.players.map((p) => [p.id, p]))
-    session.players = playerIds.map((id) => playerMap.get(id)!).filter(Boolean)
-    this.saveSession(session)
-    return session
+    const playerMap = new Map(session.players.map((p) => [p.id, p]));
+    session.players = playerIds.map((id) => playerMap.get(id)!).filter(Boolean);
+    this.saveSession(session);
+    return session;
   }
 
   static addPlayer(session: GameSession, playerName: string): GameSession {
@@ -392,165 +400,173 @@ export class StorageService {
       name: playerName,
       balance: 0,
       isActive: true,
-    }
+    };
     // Create a new array to trigger reactivity
-    session.players = [...session.players, newPlayer]
-    this.saveSession(session)
-    return session
+    session.players = [...session.players, newPlayer];
+    this.saveSession(session);
+    return session;
   }
 
-  static togglePlayerActive(session: GameSession, playerId: string, isActive: boolean): GameSession {
+  static togglePlayerActive(
+    session: GameSession,
+    playerId: string,
+    isActive: boolean
+  ): GameSession {
     // Create a new array with updated player to trigger reactivity
-    session.players = session.players.map((p) =>
-      p.id === playerId ? { ...p, isActive } : p
-    )
-    this.saveSession(session)
-    return session
+    session.players = session.players.map((p) => (p.id === playerId ? { ...p, isActive } : p));
+    this.saveSession(session);
+    return session;
   }
 
-  static getBalanceProgression(session: GameSession, playerId: string): { timestamp: number; balance: number }[] {
-    const progression: { timestamp: number; balance: number }[] = []
-    let balance = 0
+  static getBalanceProgression(
+    session: GameSession,
+    playerId: string
+  ): { timestamp: number; balance: number }[] {
+    const progression: { timestamp: number; balance: number }[] = [];
+    let balance = 0;
 
     // Replay events in chronological order
     for (const event of session.events) {
-      const transaction = event.transactions.find((t) => t.playerId === playerId)
+      const transaction = event.transactions.find((t) => t.playerId === playerId);
       if (transaction) {
-        balance += transaction.amount
-        progression.push({ timestamp: event.timestamp, balance })
+        balance += transaction.amount;
+        progression.push({ timestamp: event.timestamp, balance });
       }
     }
 
-    return progression
+    return progression;
   }
 
   static getBestiaCount(session: GameSession): Map<string, number> {
-    const bestiaCount = new Map<string, number>()
+    const bestiaCount = new Map<string, number>();
 
     // Initialize all players with 0
     session.players.forEach((player) => {
-      bestiaCount.set(player.id, 0)
-    })
+      bestiaCount.set(player.id, 0);
+    });
 
     // Count bestia occurrences
     for (const event of session.events) {
       if (event.type === 'round_end' && event.metadata?.bestiaPlayers) {
         event.metadata.bestiaPlayers.forEach((playerId) => {
-          bestiaCount.set(playerId, (bestiaCount.get(playerId) || 0) + 1)
-        })
+          bestiaCount.set(playerId, (bestiaCount.get(playerId) || 0) + 1);
+        });
       }
     }
 
-    return bestiaCount
+    return bestiaCount;
   }
 
-  static getRoundStats(session: GameSession): { roundNumber: number; timestamp: number; winner: string; winnerName: string }[] {
-    const rounds: { roundNumber: number; timestamp: number; winner: string; winnerName: string }[] = []
-    let roundNumber = 0
+  static getRoundStats(
+    session: GameSession
+  ): { roundNumber: number; timestamp: number; winner: string; winnerName: string }[] {
+    const rounds: { roundNumber: number; timestamp: number; winner: string; winnerName: string }[] =
+      [];
+    let roundNumber = 0;
 
     for (const event of session.events) {
       if (event.type === 'round_end') {
-        roundNumber++
+        roundNumber++;
         // Find the player with the most prese (winner)
-        const preseMap = event.metadata?.prese ? new Map(event.metadata.prese) : new Map()
-        let maxPrese = 0
-        let winnerId = ''
+        const preseMap = event.metadata?.prese ? new Map(event.metadata.prese) : new Map();
+        let maxPrese = 0;
+        let winnerId = '';
 
         for (const [pid, prese] of preseMap.entries()) {
           if (prese > maxPrese) {
-            maxPrese = prese
-            winnerId = pid
+            maxPrese = prese;
+            winnerId = pid;
           }
         }
 
-        const winnerName = session.players.find((p) => p.id === winnerId)?.name || 'Unknown'
-        rounds.push({ roundNumber, timestamp: event.timestamp, winner: winnerId, winnerName })
+        const winnerName = session.players.find((p) => p.id === winnerId)?.name || 'Unknown';
+        rounds.push({ roundNumber, timestamp: event.timestamp, winner: winnerId, winnerName });
       }
     }
 
-    return rounds
+    return rounds;
   }
 
   static getPlayerWins(session: GameSession): Map<string, number> {
-    const wins = new Map<string, number>()
+    const wins = new Map<string, number>();
 
     // Initialize all players with 0
     session.players.forEach((player) => {
-      wins.set(player.id, 0)
-    })
+      wins.set(player.id, 0);
+    });
 
     // Count all events where player has positive transaction (won money)
     for (const event of session.events) {
       event.transactions.forEach(({ playerId, amount }) => {
         if (amount > 0) {
-          wins.set(playerId, (wins.get(playerId) || 0) + 1)
+          wins.set(playerId, (wins.get(playerId) || 0) + 1);
         }
-      })
+      });
     }
 
-    return wins
+    return wins;
   }
 
   static getPlayerRoundsPlayed(session: GameSession): Map<string, number> {
-    const roundsPlayed = new Map<string, number>()
+    const roundsPlayed = new Map<string, number>();
 
     // Initialize all players with 0
     session.players.forEach((player) => {
-      roundsPlayed.set(player.id, 0)
-    })
+      roundsPlayed.set(player.id, 0);
+    });
 
     // Count all events where player has any transaction
     for (const event of session.events) {
       event.transactions.forEach(({ playerId }) => {
-        roundsPlayed.set(playerId, (roundsPlayed.get(playerId) || 0) + 1)
-      })
+        roundsPlayed.set(playerId, (roundsPlayed.get(playerId) || 0) + 1);
+      });
     }
 
-    return roundsPlayed
+    return roundsPlayed;
   }
 
   static getPlayerLosses(session: GameSession): Map<string, number> {
-    const losses = new Map<string, number>()
+    const losses = new Map<string, number>();
 
     // Initialize all players with 0
     session.players.forEach((player) => {
-      losses.set(player.id, 0)
-    })
+      losses.set(player.id, 0);
+    });
 
     // Count all events where player has negative transaction (lost money)
     for (const event of session.events) {
       event.transactions.forEach(({ playerId, amount }) => {
         if (amount < 0) {
-          losses.set(playerId, (losses.get(playerId) || 0) + 1)
+          losses.set(playerId, (losses.get(playerId) || 0) + 1);
         }
-      })
+      });
     }
 
-    return losses
+    return losses;
   }
 
   static clearCurrentGame(): void {
-    localStorage.removeItem(CURRENT_GAME_KEY)
+    localStorage.removeItem(CURRENT_GAME_KEY);
   }
 
   static deleteGame(gameId: string): void {
     try {
-      const games = this.getAllGames()
-      const filtered = games.filter((g) => g.id !== gameId)
-      localStorage.setItem(GAMES_KEY, JSON.stringify(filtered))
+      const games = this.getAllGames();
+      const filtered = games.filter((g) => g.id !== gameId);
+      localStorage.setItem(GAMES_KEY, JSON.stringify(filtered));
 
       // If deleted game was current, clear current game
-      const currentGameId = localStorage.getItem(CURRENT_GAME_KEY)
+      const currentGameId = localStorage.getItem(CURRENT_GAME_KEY);
       if (currentGameId === gameId) {
-        this.clearCurrentGame()
+        this.clearCurrentGame();
       }
     } catch (error) {
-      console.error('Error deleting game:', error)
+      console.error('Error deleting game:', error);
     }
   }
 
   // Backward compatibility
   static clearSession(): void {
-    this.clearCurrentGame()
+    this.clearCurrentGame();
   }
 }

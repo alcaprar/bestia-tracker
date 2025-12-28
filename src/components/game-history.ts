@@ -1,35 +1,39 @@
-import { LitElement, css, html } from 'lit'
-import { customElement, property } from 'lit/decorators.js'
-import type { GameEvent, Player } from '../types.js'
+import { LitElement, css, html } from 'lit';
+import { customElement, property } from 'lit/decorators.js';
+import type { GameEvent, Player } from '../types.js';
 
 @customElement('game-history')
 export class GameHistory extends LitElement {
   @property({ type: Array })
-  events: GameEvent[] = []
+  events: GameEvent[] = [];
 
   @property({ type: Array })
-  players: Player[] = []
+  players: Player[] = [];
 
   @property({ type: String })
-  currency: string = '€'
+  currency: string = '€';
 
   private formatTime(timestamp: number): string {
-    const date = new Date(timestamp)
-    return date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+    const date = new Date(timestamp);
+    return date.toLocaleTimeString('en-US', {
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+    });
   }
 
   private getEventLabel(event: GameEvent): string {
     if (event.type === 'round_end') {
-      const bestiaCount = event.metadata?.bestiaPlayers?.length || 0
-      return bestiaCount > 0 ? `Giro (bestia x${bestiaCount})` : 'Giro'
+      const bestiaCount = event.metadata?.bestiaPlayers?.length || 0;
+      return bestiaCount > 0 ? `Giro (bestia x${bestiaCount})` : 'Giro';
     } else if (event.type === 'giro_chiuso') {
-      return 'Giro Chiuso'
+      return 'Giro Chiuso';
     } else if (event.type === 'dealer_pay') {
-      return 'Piatto Mazziere'
+      return 'Piatto Mazziere';
     } else if (event.type === 'manual_entry') {
-      return 'Inserimento Manuale'
+      return 'Inserimento Manuale';
     }
-    return event.type
+    return event.type;
   }
 
   private deleteEvent(eventId: string): void {
@@ -38,17 +42,17 @@ export class GameHistory extends LitElement {
         new CustomEvent('delete-event', {
           detail: { eventId },
         })
-      )
+      );
     }
   }
 
   render() {
     if (this.events.length === 0) {
-      return html` <div class="empty-state">Nessun evento registrato</div> `
+      return html` <div class="empty-state">Nessun evento registrato</div> `;
     }
 
     // Reverse to show most recent first
-    const displayEvents = [...this.events].reverse()
+    const displayEvents = [...this.events].reverse();
 
     return html`
       <div class="ledger-container">
@@ -75,7 +79,13 @@ export class GameHistory extends LitElement {
                     `
                   )}
                   <td class="delete-col">
-                    <button class="delete-btn" @click=${() => this.deleteEvent(event.id)} title="Delete event">✕</button>
+                    <button
+                      class="delete-btn"
+                      @click=${() => this.deleteEvent(event.id)}
+                      title="Delete event"
+                    >
+                      ✕
+                    </button>
                   </td>
                 </tr>
               `
@@ -83,23 +93,23 @@ export class GameHistory extends LitElement {
           </tbody>
         </table>
       </div>
-    `
+    `;
   }
 
   private getAmount(event: GameEvent, playerId: string): string {
-    const transaction = event.transactions.find((t) => t.playerId === playerId)
-    if (!transaction) return '—'
-    const amount = transaction.amount
-    const sign = amount > 0 ? '+' : ''
-    return `${sign}${this.currency}${Math.abs(amount).toFixed(2)}`
+    const transaction = event.transactions.find((t) => t.playerId === playerId);
+    if (!transaction) return '—';
+    const amount = transaction.amount;
+    const sign = amount > 0 ? '+' : '';
+    return `${sign}${this.currency}${Math.abs(amount).toFixed(2)}`;
   }
 
   private getAmountClass(event: GameEvent, playerId: string): string {
-    const transaction = event.transactions.find((t) => t.playerId === playerId)
-    if (!transaction) return ''
-    if (transaction.amount > 0) return 'win'
-    if (transaction.amount < 0) return 'loss'
-    return ''
+    const transaction = event.transactions.find((t) => t.playerId === playerId);
+    if (!transaction) return '';
+    if (transaction.amount > 0) return 'win';
+    if (transaction.amount < 0) return 'loss';
+    return '';
   }
 
   static styles = css`
@@ -277,11 +287,11 @@ export class GameHistory extends LitElement {
         font-size: 0.7rem;
       }
     }
-  `
+  `;
 }
 
 declare global {
   interface HTMLElementTagNameMap {
-    'game-history': GameHistory
+    'game-history': GameHistory;
   }
 }

@@ -1,21 +1,21 @@
-import { LitElement, css, html } from 'lit'
-import { customElement, property } from 'lit/decorators.js'
-import { StorageService, type SavedGame } from '../storage.js'
+import { LitElement, css, html } from 'lit';
+import { customElement, property } from 'lit/decorators.js';
+import { StorageService, type SavedGame } from '../storage.js';
 
 @customElement('games-list')
 export class GamesList extends LitElement {
   @property({ type: Array })
-  games: SavedGame[] = []
+  games: SavedGame[] = [];
 
   private formatDate(timestamp: number): string {
-    const date = new Date(timestamp)
+    const date = new Date(timestamp);
     return date.toLocaleString('it-IT', {
       year: 'numeric',
       month: '2-digit',
       day: '2-digit',
       hour: '2-digit',
       minute: '2-digit',
-    })
+    });
   }
 
   private resumeGame(gameId: string): void {
@@ -23,16 +23,16 @@ export class GamesList extends LitElement {
       new CustomEvent('game-selected', {
         detail: { gameId },
       })
-    )
+    );
   }
 
   private deleteGame(gameId: string, event: Event): void {
-    event.stopPropagation()
+    event.stopPropagation();
 
     if (confirm('Sei sicuro di voler eliminare questa partita?')) {
-      StorageService.deleteGame(gameId)
-      this.games = StorageService.getAllGames()
-      this.requestUpdate()
+      StorageService.deleteGame(gameId);
+      this.games = StorageService.getAllGames();
+      this.requestUpdate();
     }
   }
 
@@ -43,17 +43,20 @@ export class GamesList extends LitElement {
           <h2>Nessuna partita salvata</h2>
           <p>Crea una nuova partita per iniziare.</p>
         </div>
-      `
+      `;
     }
 
     // Sort games by date, newest first
-    const sortedGames = [...this.games].sort((a, b) => b.createdAt - a.createdAt)
+    const sortedGames = [...this.games].sort((a, b) => b.createdAt - a.createdAt);
 
     return html`
       <div class="games-container">
         <h2>Le Mie Partite</h2>
         <div class="storage-notice">
-          <p>💾 <strong>Nota:</strong> I dati delle partite sono salvati localmente nel tuo browser. Se cancelli i dati del browser, tutte le partite andranno perse.</p>
+          <p>
+            💾 <strong>Nota:</strong> I dati delle partite sono salvati localmente nel tuo browser.
+            Se cancelli i dati del browser, tutte le partite andranno perse.
+          </p>
         </div>
         <div class="games-table">
           <div class="table-header">
@@ -74,9 +77,17 @@ export class GamesList extends LitElement {
                       .map((p) => p.name)
                       .join(', ')}
                   </div>
-                  <div class="col-rounds">${game.session.events.filter((e) => e.type === 'round_end').length}</div>
+                  <div class="col-rounds">
+                    ${game.session.events.filter((e) => e.type === 'round_end').length}
+                  </div>
                   <div class="col-actions">
-                    <button class="delete-btn" @click=${(e: Event) => this.deleteGame(game.id, e)} title="Elimina partita">🗑️</button>
+                    <button
+                      class="delete-btn"
+                      @click=${(e: Event) => this.deleteGame(game.id, e)}
+                      title="Elimina partita"
+                    >
+                      🗑️
+                    </button>
                   </div>
                 </div>
               `
@@ -84,7 +95,7 @@ export class GamesList extends LitElement {
           </div>
         </div>
       </div>
-    `
+    `;
   }
 
   static styles = css`
@@ -255,11 +266,11 @@ export class GamesList extends LitElement {
         text-align: left;
       }
     }
-  `
+  `;
 }
 
 declare global {
   interface HTMLElementTagNameMap {
-    'games-list': GamesList
+    'games-list': GamesList;
   }
 }
