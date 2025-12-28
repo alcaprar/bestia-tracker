@@ -43,6 +43,7 @@ export class BestiaApp extends LitElement {
     prese: Map<string, number>;
     bestia: Map<string, string>;
     calculatedAmounts: Map<string, number>;
+    lastEventWasDealer: boolean;
   } | null = null;
 
   private boundHandleRouteChange = () => this.handleRouteChange();
@@ -220,11 +221,16 @@ export class BestiaApp extends LitElement {
         bestia as Map<string, string>
       );
 
+      // Check if the last event was a dealer_pay
+      const lastEvent = this.session.events[this.session.events.length - 1];
+      const lastEventWasDealer = lastEvent?.type === 'dealer_pay';
+
       // Store the review data to pass to game-actions
       this.reviewingRoundResult = {
         prese: prese as Map<string, number>,
         bestia: bestia as Map<string, string>,
         calculatedAmounts,
+        lastEventWasDealer,
       };
 
       this.requestUpdate();
@@ -653,6 +659,11 @@ export class BestiaApp extends LitElement {
                         .editingEventId=${this.editingEventId}
                         .events=${this.session.events}
                         .reviewingResult=${this.reviewingRoundResult}
+                        .lastEventWasDealer=${this.session
+                          ? this.session.events.length > 0 &&
+                            this.session.events[this.session.events.length - 1].type ===
+                              'dealer_pay'
+                          : true}
                         @dealer-selected=${this.handleDealerSelected}
                         @round-recorded=${this.handleRoundRecorded}
                         @giro-chiuso-recorded=${this.handleGiroChiusoRecorded}

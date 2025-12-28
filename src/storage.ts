@@ -627,7 +627,11 @@ export class StorageService {
     });
 
     // Count all events where player has positive transaction (won money)
+    // Exclude dealer_pay and giro_chiuso events as these are not game rounds
     for (const event of session.events) {
+      if (event.type === 'dealer_pay' || event.type === 'giro_chiuso') {
+        continue;
+      }
       event.transactions.forEach(({ playerId, amount }) => {
         if (amount > 0) {
           wins.set(playerId, (wins.get(playerId) || 0) + 1);
@@ -647,7 +651,11 @@ export class StorageService {
     });
 
     // Count all events where player has any transaction
+    // Exclude dealer_pay and giro_chiuso events as these are not game rounds
     for (const event of session.events) {
+      if (event.type === 'dealer_pay' || event.type === 'giro_chiuso') {
+        continue;
+      }
       event.transactions.forEach(({ playerId }) => {
         roundsPlayed.set(playerId, (roundsPlayed.get(playerId) || 0) + 1);
       });
@@ -665,7 +673,11 @@ export class StorageService {
     });
 
     // Count all events where player has negative transaction (lost money)
+    // Exclude dealer_pay and giro_chiuso events as these are not game losses
     for (const event of session.events) {
+      if (event.type === 'dealer_pay' || event.type === 'giro_chiuso') {
+        continue;
+      }
       event.transactions.forEach(({ playerId, amount }) => {
         if (amount < 0) {
           losses.set(playerId, (losses.get(playerId) || 0) + 1);

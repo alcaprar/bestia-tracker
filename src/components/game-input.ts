@@ -19,6 +19,9 @@ export class GameInput extends LitElement {
   @property({ type: String })
   currency: string = '€';
 
+  @property({ type: Boolean })
+  lastEventWasDealer: boolean = true;
+
   @state()
   private playerSelection: Map<
     string,
@@ -323,6 +326,14 @@ export class GameInput extends LitElement {
           </div>
         </div>
 
+        ${!this.lastEventWasDealer
+          ? html`
+              <div class="warning-callout">
+                <p>⚠️ Ti sei ricordato di inserire l'ultimo mazziere?</p>
+              </div>
+            `
+          : ''}
+
         <div class="section-header">
           <h2>Registra Risultato Giro</h2>
           <div class="help-tooltip" title="Clicca due volte per deselezionare">ℹ️</div>
@@ -489,6 +500,23 @@ export class GameInput extends LitElement {
 
     .help-tooltip:hover {
       opacity: 1;
+    }
+
+    .warning-callout {
+      padding: 1.25rem 1.5rem;
+      background: #fef3c7;
+      border-left: 5px solid #f59e0b;
+      border-radius: 0.5rem;
+      margin-bottom: 1.5rem;
+      box-shadow: 0 2px 8px rgba(245, 158, 11, 0.15);
+    }
+
+    .warning-callout p {
+      margin: 0;
+      color: #92400e;
+      font-size: 1.05rem;
+      font-weight: 700;
+      letter-spacing: 0.3px;
     }
 
     .instructions {

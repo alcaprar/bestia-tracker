@@ -32,11 +32,15 @@ export class GameActions extends LitElement {
   @property({ type: Array })
   events: GameEvent[] = [];
 
+  @property({ type: Boolean })
+  lastEventWasDealer: boolean = true;
+
   @property({ type: Object })
   reviewingResult: {
     prese: Map<string, number>;
     bestia: Map<string, string>;
     calculatedAmounts: Map<string, number>;
+    lastEventWasDealer: boolean;
   } | null = null;
 
   @state()
@@ -349,6 +353,7 @@ export class GameActions extends LitElement {
           .currentPot=${this.currentPot}
           .dealer=${this.currentDealer}
           .currency=${this.currency}
+          .lastEventWasDealer=${this.lastEventWasDealer}
           @game-result=${this.handleRecordResult}
         ></game-input>
       </div>
@@ -403,6 +408,14 @@ export class GameActions extends LitElement {
           <h2>${title}</h2>
           <button class="back-btn" @click=${this.backToMenu}>← Indietro</button>
         </div>
+
+        ${isReviewing && !this.reviewingResult?.lastEventWasDealer
+          ? html`
+              <div class="warning-callout">
+                <p>⚠️ Ti sei ricordato di inserire l'ultimo mazziere?</p>
+              </div>
+            `
+          : ''}
 
         <div class="manual-info">
           <p>
@@ -646,6 +659,23 @@ export class GameActions extends LitElement {
 
     .manual-btn:hover {
       border-color: #8b5cf6;
+    }
+
+    .warning-callout {
+      padding: 1.25rem 1.5rem;
+      background: #fef3c7;
+      border-left: 5px solid var(--warning);
+      border-radius: 0.5rem;
+      margin-bottom: 1.5rem;
+      box-shadow: 0 2px 8px rgba(245, 158, 11, 0.15);
+    }
+
+    .warning-callout p {
+      margin: 0;
+      color: #92400e;
+      font-size: 1.05rem;
+      font-weight: 700;
+      letter-spacing: 0.3px;
     }
 
     .manual-info {
