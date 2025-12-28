@@ -161,43 +161,49 @@ export class StorageService {
     return session;
   }
 
+  static calculateRoundPayouts(
+    session: GameSession,
+    preseMap: Map<string, number>,
+    bestiaPlayerIds: string[]
+  ): Map<string, number> {
+    const potAtStart = this.calculateCurrentPot(session);
+    const payouts = new Map<string, number>();
+
+    session.players.forEach((player) => {
+      payouts.set(player.id, 0);
+    });
+
+    const winners = Array.from(preseMap.entries()).filter(([_, prese]) => prese > 0);
+    const totalPrese = winners.reduce((sum, [_, prese]) => sum + prese, 0);
+
+    if (bestiaPlayerIds.length > 0) {
+      winners.forEach(([playerId, prese]) => {
+        const share = (prese / totalPrese) * potAtStart;
+        payouts.set(playerId, (payouts.get(playerId) || 0) + share);
+      });
+
+      bestiaPlayerIds.forEach((playerId) => {
+        payouts.set(playerId, (payouts.get(playerId) || 0) - potAtStart);
+      });
+    } else {
+      winners.forEach(([playerId, prese]) => {
+        const share = (prese / totalPrese) * potAtStart;
+        payouts.set(playerId, (payouts.get(playerId) || 0) + share);
+      });
+    }
+
+    return payouts;
+  }
+
   static recordRound(
     session: GameSession,
     preseMap: Map<string, number>,
     bestiaPlayerIds: string[]
   ): GameSession {
     const dealerPlayerId = session.players[session.currentDealerIndex].id;
-    const potAtStart = this.calculateCurrentPot(session);
 
-    // Calculate payouts
-    const payouts = new Map<string, number>();
-    session.players.forEach((player) => {
-      payouts.set(player.id, 0);
-    });
-
-    // Get winners (players with prese > 0)
-    const winners = Array.from(preseMap.entries()).filter(([_, prese]) => prese > 0);
-    const totalPrese = winners.reduce((sum, [_, prese]) => sum + prese, 0);
-
-    if (bestiaPlayerIds.length > 0) {
-      // Some players went bestia
-      // Split pot among winners proportionally by prese
-      winners.forEach(([playerId, prese]) => {
-        const share = (prese / totalPrese) * potAtStart;
-        payouts.set(playerId, (payouts.get(playerId) || 0) + share);
-      });
-
-      // Bestia players pay the pot amount
-      bestiaPlayerIds.forEach((playerId) => {
-        payouts.set(playerId, (payouts.get(playerId) || 0) - potAtStart);
-      });
-    } else {
-      // No bestia: winners split pot
-      winners.forEach(([playerId, prese]) => {
-        const share = (prese / totalPrese) * potAtStart;
-        payouts.set(playerId, (payouts.get(playerId) || 0) + share);
-      });
-    }
+    // Calculate payouts using the utility method
+    const payouts = this.calculateRoundPayouts(session, preseMap, bestiaPlayerIds);
 
     // Create transactions array
     const transactions: Transaction[] = Array.from(payouts.entries())
@@ -206,6 +212,41 @@ export class StorageService {
         playerId,
         amount,
       }));
+
+    // Record round_end event
+    const event: GameEvent = {
+      id: Math.random().toString(36).substr(2, 9),
+      type: 'round_end',
+      timestamp: Date.now(),
+      transactions,
+      metadata: {
+        dealerPlayerId,
+        prese: preseMap,
+        bestiaPlayers: bestiaPlayerIds,
+      },
+    };
+
+    session.events.push(event);
+
+    // Rotate dealer
+    session.currentDealerIndex = (session.currentDealerIndex + 1) % session.players.length;
+
+    this.saveSession(session);
+    return session;
+  }
+
+  static recordRoundWithAmounts(
+    session: GameSession,
+    preseMap: Map<string, number>,
+    bestiaPlayerIds: string[],
+    adjustedAmounts: Map<string, number>
+  ): GameSession {
+    const dealerPlayerId = session.players[session.currentDealerIndex].id;
+
+    // Create transactions from adjusted amounts
+    const transactions: Transaction[] = Array.from(adjustedAmounts.entries())
+      .filter(([_, amount]) => amount !== 0)
+      .map(([playerId, amount]) => ({ playerId, amount }));
 
     // Record round_end event
     const event: GameEvent = {

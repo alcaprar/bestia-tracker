@@ -32,6 +32,13 @@ export class GameActions extends LitElement {
   @property({ type: Array })
   events: GameEvent[] = [];
 
+  @property({ type: Object })
+  reviewingResult: {
+    prese: Map<string, number>;
+    bestia: string[];
+    calculatedAmounts: Map<string, number>;
+  } | null = null;
+
   @state()
   private step: ActionStep = 'menu';
 
@@ -54,13 +61,19 @@ export class GameActions extends LitElement {
   updated(changedProperties: PropertyValues): void {
     super.updated(changedProperties);
 
-    // If editingEventId is set, automatically navigate to manual_entry
+    // Handle edit mode
     if (changedProperties.has('editingEventId') && this.editingEventId) {
       const eventToEdit = this.events.find((e) => e.id === this.editingEventId);
       if (eventToEdit) {
         this.step = 'manual_entry';
         this.populateFormWithEvent(eventToEdit);
       }
+    }
+
+    // Handle review mode
+    if (changedProperties.has('reviewingResult') && this.reviewingResult) {
+      this.step = 'manual_entry';
+      this.populateFormWithReview(this.reviewingResult);
     }
   }
 
@@ -75,6 +88,25 @@ export class GameActions extends LitElement {
 
     // Populate description if it exists
     this.manualDescription = event.metadata?.description || '';
+
+    this.requestUpdate();
+  }
+
+  private populateFormWithReview(review: {
+    prese: Map<string, number>;
+    bestia: string[];
+    calculatedAmounts: Map<string, number>;
+  }): void {
+    // Clear existing state
+    this.manualAmounts = new Map();
+
+    // Populate with calculated amounts
+    review.calculatedAmounts.forEach((amount, playerId) => {
+      this.manualAmounts.set(playerId, amount);
+    });
+
+    // No description in review mode
+    this.manualDescription = '';
 
     this.requestUpdate();
   }
@@ -124,6 +156,18 @@ export class GameActions extends LitElement {
   }
 
   private backToMenu(): void {
+    // If reviewing, go back to result selection
+    if (this.reviewingResult) {
+      this.step = 'record_result';
+      this.dispatchEvent(
+        new CustomEvent('review-cancelled', {
+          bubbles: true,
+          composed: true,
+        })
+      );
+      return;
+    }
+
     this.step = 'menu';
 
     // Notify parent to clear edit mode
@@ -183,6 +227,25 @@ export class GameActions extends LitElement {
     this.manualAmounts = new Map();
     this.manualDescription = '';
     this.backToMenu();
+  }
+
+  private confirmReview(): void {
+    if (!this.reviewingResult) return;
+
+    this.dispatchEvent(
+      new CustomEvent('round-confirmed', {
+        detail: {
+          prese: this.reviewingResult.prese,
+          bestia: this.reviewingResult.bestia,
+          adjustedAmounts: this.manualAmounts,
+        },
+        bubbles: true,
+        composed: true,
+      })
+    );
+
+    this.manualAmounts = new Map();
+    this.step = 'menu';
   }
 
   private updateManualAmount(playerId: string, value: number): void {
@@ -315,11 +378,29 @@ export class GameActions extends LitElement {
   private renderManualEntry() {
     const hasAnyNonZero = Array.from(this.manualAmounts.values()).some((v) => v !== 0);
     const isEditing = !!this.editingEventId;
+    const isReviewing = !!this.reviewingResult;
+
+    // Determine title
+    let title = 'Inserimento Manuale';
+    if (isEditing) title = 'Modifica Inserimento';
+    if (isReviewing) title = 'Conferma Risultato';
+
+    // Determine button handler
+    const handleConfirm = isEditing
+      ? this.confirmManualEdit
+      : isReviewing
+        ? this.confirmReview
+        : this.confirmManualEntry;
+
+    // Determine button text
+    let buttonText = 'Conferma Inserimento Manuale';
+    if (isEditing) buttonText = 'Salva Modifiche';
+    if (isReviewing) buttonText = 'Conferma';
 
     return html`
       <div class="actions-container">
         <div class="step-header">
-          <h2>${isEditing ? 'Modifica Inserimento' : 'Inserimento Manuale'}</h2>
+          <h2>${title}</h2>
           <button class="back-btn" @click=${this.backToMenu}>← Indietro</button>
         </div>
 
@@ -368,25 +449,29 @@ export class GameActions extends LitElement {
             })}
         </div>
 
-        <div class="description-section">
-          <label for="manual-description">Nota (opzionale):</label>
-          <textarea
-            id="manual-description"
-            .value=${this.manualDescription}
-            @input=${(e: Event) => {
-              this.updateManualDescription((e.target as HTMLTextAreaElement).value);
-            }}
-            placeholder="Spiega perché è stato necessario questo aggiustamento manuale..."
-            rows="3"
-          ></textarea>
-        </div>
+        ${!isReviewing
+          ? html`
+              <div class="description-section">
+                <label for="manual-description">Nota (opzionale):</label>
+                <textarea
+                  id="manual-description"
+                  .value=${this.manualDescription}
+                  @input=${(e: Event) => {
+                    this.updateManualDescription((e.target as HTMLTextAreaElement).value);
+                  }}
+                  placeholder="Spiega perché è stato necessario questo aggiustamento manuale..."
+                  rows="3"
+                ></textarea>
+              </div>
+            `
+          : ''}
 
         <button
           class="confirm-btn manual-confirm-btn"
-          @click=${isEditing ? this.confirmManualEdit : this.confirmManualEntry}
+          @click=${handleConfirm}
           ?disabled=${!hasAnyNonZero}
         >
-          ${isEditing ? 'Salva Modifiche' : 'Conferma Inserimento Manuale'}
+          ${buttonText}
         </button>
       </div>
     `;

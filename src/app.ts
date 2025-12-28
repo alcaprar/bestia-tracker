@@ -38,6 +38,13 @@ export class BestiaApp extends LitElement {
   @state()
   private editingEventId: string | null = null;
 
+  @state()
+  private reviewingRoundResult: {
+    prese: Map<string, number>;
+    bestia: string[];
+    calculatedAmounts: Map<string, number>;
+  } | null = null;
+
   private boundHandleRouteChange = () => this.handleRouteChange();
 
   connectedCallback() {
@@ -182,13 +189,18 @@ export class BestiaApp extends LitElement {
     event: CustomEvent<{ prese: Map<string, number>; bestia: string[] }>
   ): void {
     if (this.session) {
-      const updatedSession = StorageService.recordRound(
-        this.session,
-        event.detail.prese,
-        event.detail.bestia
-      );
-      // Force reactivity by reassigning the entire session object
-      this.session = { ...updatedSession };
+      const { prese, bestia } = event.detail;
+
+      // Calculate payouts without saving
+      const calculatedAmounts = StorageService.calculateRoundPayouts(this.session, prese, bestia);
+
+      // Store the review data to pass to game-actions
+      this.reviewingRoundResult = {
+        prese,
+        bestia,
+        calculatedAmounts,
+      };
+
       this.requestUpdate();
     }
   }
@@ -234,7 +246,10 @@ export class BestiaApp extends LitElement {
       if (existingEvent) {
         // Store the event ID being edited
         this.editingEventId = eventId;
-        this.requestUpdate();
+
+        // Switch to the record tab where game-actions is displayed
+        // Use navigateToTab to update both URL and activeTab
+        this.navigateToTab('record');
       }
     }
   }
@@ -259,12 +274,45 @@ export class BestiaApp extends LitElement {
 
       this.session = { ...updatedSession };
       this.editingEventId = null;
-      this.requestUpdate();
+
+      // Navigate back to history tab to show the updated event
+      this.navigateToTab('history');
     }
   }
 
   private handleCancelEdit(): void {
     this.editingEventId = null;
+
+    // Navigate back to history tab when cancelling edit
+    this.navigateToTab('history');
+  }
+
+  private handleRoundConfirmed(
+    event: CustomEvent<{
+      prese: Map<string, number>;
+      bestia: string[];
+      adjustedAmounts: Map<string, number>;
+    }>
+  ): void {
+    if (this.session && this.reviewingRoundResult) {
+      const { prese, bestia, adjustedAmounts } = event.detail;
+
+      // Create the round event with adjusted amounts
+      const updatedSession = StorageService.recordRoundWithAmounts(
+        this.session,
+        prese,
+        bestia,
+        adjustedAmounts
+      );
+
+      this.session = { ...updatedSession };
+      this.reviewingRoundResult = null;
+      this.requestUpdate();
+    }
+  }
+
+  private handleReviewCancelled(): void {
+    this.reviewingRoundResult = null;
     this.requestUpdate();
   }
 
@@ -559,12 +607,15 @@ export class BestiaApp extends LitElement {
                         .currency=${this.session?.currency || '€'}
                         .editingEventId=${this.editingEventId}
                         .events=${this.session.events}
+                        .reviewingResult=${this.reviewingRoundResult}
                         @dealer-selected=${this.handleDealerSelected}
                         @round-recorded=${this.handleRoundRecorded}
                         @giro-chiuso-recorded=${this.handleGiroChiusoRecorded}
                         @manual-entry-recorded=${this.handleManualEntryRecorded}
                         @manual-entry-edited=${this.handleManualEntryEdited}
                         @cancel-edit=${this.handleCancelEdit}
+                        @round-confirmed=${this.handleRoundConfirmed}
+                        @review-cancelled=${this.handleReviewCancelled}
                       ></game-actions>
                     `
                   : this.activeTab === 'history'
