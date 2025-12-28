@@ -22,12 +22,16 @@ export class GameInput extends LitElement {
   @state()
   private playerSelection: Map<string, 'none' | '1' | '2' | '3' | 'bestia'> = new Map();
 
+  @state()
+  private lastSelectedOption: Map<string, 'none' | '1' | '2' | '3' | 'bestia'> = new Map();
+
   connectedCallback() {
     super.connectedCallback();
     // Initialize all active players with no selection
     this.players.forEach((player) => {
       if (player.isActive) {
         this.playerSelection.set(player.id, 'none');
+        this.lastSelectedOption.set(player.id, 'none');
       }
     });
   }
@@ -36,7 +40,16 @@ export class GameInput extends LitElement {
     playerId: string,
     selection: 'none' | '1' | '2' | '3' | 'bestia'
   ): void {
-    this.playerSelection.set(playerId, selection);
+    const currentSelection = this.playerSelection.get(playerId) || 'none';
+
+    // If clicking the same option twice, deselect
+    if (currentSelection === selection && selection !== 'none') {
+      this.playerSelection.set(playerId, 'none');
+      this.lastSelectedOption.set(playerId, selection);
+    } else {
+      this.playerSelection.set(playerId, selection);
+      this.lastSelectedOption.set(playerId, selection);
+    }
     this.requestUpdate();
   }
 
@@ -156,10 +169,9 @@ export class GameInput extends LitElement {
     const canSubmit = totalPrese === 3;
     const payouts = this.calculatePayouts();
     const options = [
-      { value: 'none' as const, label: 'Salta', icon: '○' },
-      { value: '1' as const, label: '1 Presa', icon: '●' },
-      { value: '2' as const, label: '2 Prese', icon: '●●' },
-      { value: '3' as const, label: '3 Prese', icon: '●●●' },
+      { value: '1' as const, label: '1 Presa', icon: '' },
+      { value: '2' as const, label: '2 Prese', icon: '' },
+      { value: '3' as const, label: '3 Prese', icon: '' },
       { value: 'bestia' as const, label: 'Bestia', icon: '💣' },
     ];
 
@@ -176,9 +188,13 @@ export class GameInput extends LitElement {
           </div>
         </div>
 
-        <h2>Registra Risultato Giro</h2>
+        <div class="section-header">
+          <h2>Registra Risultato Giro</h2>
+          <div class="help-tooltip" title="Clicca due volte per deselezionare">ℹ️</div>
+        </div>
         <p class="instructions">
-          Seleziona un'opzione per giocatore (esattamente 3 prese totali richieste)
+          Seleziona un'opzione per giocatore (esattamente 3 prese totali richieste). Clicca due
+          volte lo stesso pulsante per deselezionare.
         </p>
 
         <div class="players-input-grid">
@@ -283,10 +299,28 @@ export class GameInput extends LitElement {
     }
 
     h2 {
-      margin: 0 0 0.5rem 0;
+      margin: 0;
       font-size: 1.25rem;
       font-weight: 700;
       color: var(--gray-900);
+    }
+
+    .section-header {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      margin-bottom: 0.5rem;
+    }
+
+    .help-tooltip {
+      font-size: 1.25rem;
+      cursor: help;
+      opacity: 0.7;
+      transition: opacity 0.2s;
+    }
+
+    .help-tooltip:hover {
+      opacity: 1;
     }
 
     .instructions {
