@@ -333,6 +333,44 @@ export class GameStats extends LitElement {
     this.charts.set('bestiaCount', chart);
   }
 
+  private getBiggestWin(): { playerName: string; amount: number } | null {
+    if (!this.session) return null;
+
+    const playerMap = new Map(this.session.players.map((p) => [p.id, p.name]));
+    let biggestWin = 0;
+    let winnerName = '';
+
+    for (const event of this.session.events) {
+      for (const { playerId, amount } of event.transactions) {
+        if (amount > biggestWin) {
+          biggestWin = amount;
+          winnerName = playerMap.get(playerId) || 'Unknown';
+        }
+      }
+    }
+
+    return biggestWin > 0 ? { playerName: winnerName, amount: biggestWin } : null;
+  }
+
+  private getBiggestLoss(): { playerName: string; amount: number } | null {
+    if (!this.session) return null;
+
+    const playerMap = new Map(this.session.players.map((p) => [p.id, p.name]));
+    let biggestLoss = 0;
+    let loserName = '';
+
+    for (const event of this.session.events) {
+      for (const { playerId, amount } of event.transactions) {
+        if (amount < -biggestLoss) {
+          biggestLoss = -amount;
+          loserName = playerMap.get(playerId) || 'Unknown';
+        }
+      }
+    }
+
+    return biggestLoss > 0 ? { playerName: loserName, amount: biggestLoss } : null;
+  }
+
   private downloadChart(chartId: string, filename: string): void {
     const canvas = this.shadowRoot?.querySelector(`#${chartId}`) as HTMLCanvasElement;
     if (!canvas) return;
@@ -353,8 +391,39 @@ export class GameStats extends LitElement {
       `;
     }
 
+    const biggestWin = this.getBiggestWin();
+    const biggestLoss = this.getBiggestLoss();
+
     return html`
       <div class="stats-container">
+        ${biggestWin || biggestLoss
+          ? html`
+              <div class="highlights-grid">
+                ${biggestWin
+                  ? html`
+                      <div class="highlight-box win">
+                        <div class="highlight-label">Vittoria Più Grande</div>
+                        <div class="highlight-amount">
+                          +${this.getCurrency()}${biggestWin.amount.toFixed(2)}
+                        </div>
+                        <div class="highlight-player">${biggestWin.playerName}</div>
+                      </div>
+                    `
+                  : ''}
+                ${biggestLoss
+                  ? html`
+                      <div class="highlight-box loss">
+                        <div class="highlight-label">Perdita Più Grande</div>
+                        <div class="highlight-amount">
+                          -${this.getCurrency()}${biggestLoss.amount.toFixed(2)}
+                        </div>
+                        <div class="highlight-player">${biggestLoss.playerName}</div>
+                      </div>
+                    `
+                  : ''}
+              </div>
+            `
+          : ''}
         <div class="stats-grid">
           <div class="chart-card">
             <div class="chart-header">
@@ -427,6 +496,52 @@ export class GameStats extends LitElement {
       padding: 3rem 1rem;
       color: #374151;
       font-size: 1.125rem;
+    }
+
+    .highlights-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 1.5rem;
+      margin-bottom: 2rem;
+    }
+
+    .highlight-box {
+      padding: 1.5rem;
+      border-radius: 0.75rem;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+
+    .highlight-box.win {
+      background: #ecfdf5;
+      border: 2px solid #10b981;
+      color: #065f46;
+    }
+
+    .highlight-box.loss {
+      background: #fef2f2;
+      border: 2px solid #ef4444;
+      color: #7f1d1d;
+    }
+
+    .highlight-label {
+      font-size: 0.875rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      opacity: 0.8;
+    }
+
+    .highlight-amount {
+      font-size: 1.75rem;
+      font-weight: 700;
+    }
+
+    .highlight-player {
+      font-size: 1rem;
+      font-weight: 500;
     }
 
     .stats-grid {
