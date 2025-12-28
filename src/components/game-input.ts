@@ -216,7 +216,7 @@ export class GameInput extends LitElement {
                             value=${option.value}
                             .checked=${(this.playerSelection.get(player.id) || 'none') ===
                             option.value}
-                            @change=${() => this.setPlayerSelection(player.id, option.value)}
+                            @click=${() => this.setPlayerSelection(player.id, option.value)}
                           />
                           <span class="radio-content">
                             <span class="radio-icon">${option.icon}</span>
