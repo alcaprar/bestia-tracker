@@ -9,10 +9,11 @@ import './components/game-actions.js';
 import './components/game-history.js';
 import './components/game-settings.js';
 import './components/game-stats.js';
+import './components/game-payments.js';
 import './components/games-list.js';
 import './components/share-game-modal.js';
 
-type TabType = 'record' | 'history' | 'settings' | 'statistics';
+type TabType = 'record' | 'history' | 'settings' | 'statistics' | 'pagamenti';
 type Route = 'games' | 'game-new' | 'game-play';
 
 @customElement('bestia-app')
@@ -132,7 +133,10 @@ export class BestiaApp extends LitElement {
         this.session = game.session;
         this.currentRoute = 'game-play';
         // Set tab if provided, otherwise default to record
-        if (tabParam && ['record', 'history', 'settings', 'statistics'].includes(tabParam)) {
+        if (
+          tabParam &&
+          ['record', 'history', 'settings', 'statistics', 'pagamenti'].includes(tabParam)
+        ) {
           this.activeTab = tabParam;
         } else {
           this.activeTab = 'record';
@@ -636,6 +640,12 @@ export class BestiaApp extends LitElement {
                 >
                   📊 Statistiche
                 </button>
+                <button
+                  class="tab-btn ${this.activeTab === 'pagamenti' ? 'active' : ''}"
+                  @click=${() => this.navigateToTab('pagamenti')}
+                >
+                  💰 Pagamenti
+                </button>
               </div>
 
               <div class="tabs-content">
@@ -697,7 +707,14 @@ export class BestiaApp extends LitElement {
                             @player-status-changed=${this.handlePlayerStatusChanged}
                           ></game-settings>
                         `
-                      : html` <game-stats .session=${this.session}></game-stats> `}
+                      : this.activeTab === 'pagamenti'
+                        ? html`
+                            <game-payments
+                              .session=${this.session}
+                              .currency=${this.session?.currency || '€'}
+                            ></game-payments>
+                          `
+                        : html` <game-stats .session=${this.session}></game-stats> `}
               </div>
             </div>
           </div>

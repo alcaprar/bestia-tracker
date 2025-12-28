@@ -464,6 +464,76 @@ export class StorageService {
     return balances;
   }
 
+  static calculateSettlementPayments(session: GameSession): Array<{
+    from: string;
+    to: string;
+    fromName: string;
+    toName: string;
+    amount: number;
+  }> {
+    const balances = this.calculatePlayerBalances(session);
+    const payments: Array<{
+      from: string;
+      to: string;
+      fromName: string;
+      toName: string;
+      amount: number;
+    }> = [];
+
+    // Create arrays of creditors (positive balance) and debtors (negative balance)
+    const creditors: Array<{ playerId: string; playerName: string; amount: number }> = [];
+    const debtors: Array<{ playerId: string; playerName: string; amount: number }> = [];
+
+    session.players.forEach((player) => {
+      const balance = balances.get(player.id) || 0;
+      if (balance > 0.01) {
+        // Creditor (use small epsilon for floating point)
+        creditors.push({ playerId: player.id, playerName: player.name, amount: balance });
+      } else if (balance < -0.01) {
+        // Debtor
+        debtors.push({
+          playerId: player.id,
+          playerName: player.name,
+          amount: -balance,
+        });
+      }
+    });
+
+    // Sort by amount (descending) for greedy matching
+    creditors.sort((a, b) => b.amount - a.amount);
+    debtors.sort((a, b) => b.amount - a.amount);
+
+    // Greedy matching: match largest debtor with largest creditor
+    let i = 0; // creditor index
+    let j = 0; // debtor index
+
+    while (i < creditors.length && j < debtors.length) {
+      const creditor = creditors[i];
+      const debtor = debtors[j];
+
+      // Payment is the minimum of what's owed and what's due
+      const payment = Math.min(creditor.amount, debtor.amount);
+
+      payments.push({
+        from: debtor.playerId,
+        to: creditor.playerId,
+        fromName: debtor.playerName,
+        toName: creditor.playerName,
+        amount: payment,
+      });
+
+      // Update remaining amounts
+      creditor.amount -= payment;
+      debtor.amount -= payment;
+
+      // Move to next creditor/debtor if settled
+      if (creditor.amount < 0.01) i++;
+      if (debtor.amount < 0.01) j++;
+    }
+
+    return payments;
+  }
+
   static getCurrentDealerId(session: GameSession): string {
     // Find the most recent dealer_pay event
     for (let i = session.events.length - 1; i >= 0; i--) {
