@@ -164,7 +164,7 @@ export class StorageService {
   static calculateRoundPayouts(
     session: GameSession,
     preseMap: Map<string, number>,
-    bestiaPlayerIds: string[]
+    bestiaMap: Map<string, string> | string[]
   ): Map<string, number> {
     const potAtStart = this.calculateCurrentPot(session);
     const payouts = new Map<string, number>();
@@ -176,16 +176,59 @@ export class StorageService {
     const winners = Array.from(preseMap.entries()).filter(([_, prese]) => prese > 0);
     const totalPrese = winners.reduce((sum, [_, prese]) => sum + prese, 0);
 
-    if (bestiaPlayerIds.length > 0) {
+    // Handle backward compatibility: bestiaMap can be Map<string, string> or string[] (old format)
+    let bestiaTypes: Map<string, string> = new Map();
+    if (bestiaMap instanceof Map) {
+      bestiaTypes = bestiaMap;
+    } else if (Array.isArray(bestiaMap)) {
+      // Old format: just player IDs, assume standard bestia
+      bestiaMap.forEach((playerId) => {
+        bestiaTypes.set(playerId, 'standard');
+      });
+    }
+
+    if (bestiaTypes.size > 0) {
+      // Calculate effective pot based on split bestia
+      let effectivePot = potAtStart;
+
+      // Find the maximum split factor among all bestia players
+      const splitFactors = Array.from(bestiaTypes.values()).map((type) => {
+        if (type === 'in_due') return 2;
+        if (type === 'in_tre') return 3;
+        if (type === 'in_quattro') return 4;
+        return 1; // standard bestia
+      });
+
+      // If there are any split bestia, use the maximum factor
+      // (all players in that split pay equally)
+      if (splitFactors.some((f) => f > 1)) {
+        const maxFactor = Math.max(...splitFactors);
+        effectivePot = potAtStart / maxFactor;
+      }
+
+      // Winners split the effective pot proportionally by prese
       winners.forEach(([playerId, prese]) => {
-        const share = (prese / totalPrese) * potAtStart;
+        const share = (prese / totalPrese) * effectivePot;
         payouts.set(playerId, (payouts.get(playerId) || 0) + share);
       });
 
-      bestiaPlayerIds.forEach((playerId) => {
-        payouts.set(playerId, (payouts.get(playerId) || 0) - potAtStart);
+      // Each bestia player pays their share based on type
+      bestiaTypes.forEach((type, playerId) => {
+        let payment = 0;
+        if (type === 'in_due') {
+          payment = potAtStart / 2;
+        } else if (type === 'in_tre') {
+          payment = potAtStart / 3;
+        } else if (type === 'in_quattro') {
+          payment = potAtStart / 4;
+        } else {
+          // standard bestia pays full pot
+          payment = potAtStart;
+        }
+        payouts.set(playerId, (payouts.get(playerId) || 0) - payment);
       });
     } else {
+      // No bestia: winners split pot among themselves
       winners.forEach(([playerId, prese]) => {
         const share = (prese / totalPrese) * potAtStart;
         payouts.set(playerId, (payouts.get(playerId) || 0) + share);
@@ -238,7 +281,7 @@ export class StorageService {
   static recordRoundWithAmounts(
     session: GameSession,
     preseMap: Map<string, number>,
-    bestiaPlayerIds: string[],
+    bestiaMap: Map<string, string> | string[],
     adjustedAmounts: Map<string, number>
   ): GameSession {
     const dealerPlayerId = session.players[session.currentDealerIndex].id;
@@ -247,6 +290,14 @@ export class StorageService {
     const transactions: Transaction[] = Array.from(adjustedAmounts.entries())
       .filter(([_, amount]) => amount !== 0)
       .map(([playerId, amount]) => ({ playerId, amount }));
+
+    // Convert bestiaMap to array of player IDs for metadata (backward compatibility)
+    let bestiaPlayerIds: string[] = [];
+    if (bestiaMap instanceof Map) {
+      bestiaPlayerIds = Array.from(bestiaMap.keys());
+    } else if (Array.isArray(bestiaMap)) {
+      bestiaPlayerIds = bestiaMap;
+    }
 
     // Record round_end event
     const event: GameEvent = {

@@ -219,7 +219,7 @@ export class GameInput extends LitElement {
   private submitResult(): void {
     // Calculate total prese (only from active players)
     let totalPrese = 0;
-    const bestiaPlayers: string[] = [];
+    const bestiaMap = new Map<string, string>(); // Map of playerId to bestia type
     const preseMap = new Map<string, number>();
 
     this.players.forEach((player) => {
@@ -232,7 +232,10 @@ export class GameInput extends LitElement {
           selection === 'bestia_in_tre' ||
           selection === 'bestia_in_quattro'
         ) {
-          bestiaPlayers.push(player.id);
+          bestiaMap.set(
+            player.id,
+            selection === 'bestia' ? 'standard' : selection.replace('bestia_', '')
+          );
           preseMap.set(player.id, 0);
         } else {
           const preseValue = this.getPreseValue(selection);
@@ -252,7 +255,7 @@ export class GameInput extends LitElement {
       new CustomEvent('game-result', {
         detail: {
           prese: preseMap,
-          bestia: bestiaPlayers,
+          bestia: bestiaMap,
         },
       })
     );

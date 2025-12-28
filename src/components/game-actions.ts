@@ -35,7 +35,7 @@ export class GameActions extends LitElement {
   @property({ type: Object })
   reviewingResult: {
     prese: Map<string, number>;
-    bestia: string[];
+    bestia: Map<string, string>;
     calculatedAmounts: Map<string, number>;
   } | null = null;
 
@@ -94,7 +94,7 @@ export class GameActions extends LitElement {
 
   private populateFormWithReview(review: {
     prese: Map<string, number>;
-    bestia: string[];
+    bestia: Map<string, string>;
     calculatedAmounts: Map<string, number>;
   }): void {
     // Clear existing state
@@ -236,7 +236,7 @@ export class GameActions extends LitElement {
       new CustomEvent('round-confirmed', {
         detail: {
           prese: this.reviewingResult.prese,
-          bestia: this.reviewingResult.bestia,
+          bestia: this.reviewingResult.bestia, // Now a Map<string, string> with bestia types
           adjustedAmounts: this.manualAmounts,
         },
         bubbles: true,

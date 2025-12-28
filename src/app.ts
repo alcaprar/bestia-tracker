@@ -41,7 +41,7 @@ export class BestiaApp extends LitElement {
   @state()
   private reviewingRoundResult: {
     prese: Map<string, number>;
-    bestia: string[];
+    bestia: Map<string, string>;
     calculatedAmounts: Map<string, number>;
   } | null = null;
 
@@ -186,11 +186,14 @@ export class BestiaApp extends LitElement {
   }
 
   private handleRoundRecorded(
-    event: CustomEvent<{ prese: Map<string, number> | Record<string, number>; bestia: string[] }>
+    event: CustomEvent<{
+      prese: Map<string, number> | Record<string, number>;
+      bestia: Map<string, string> | Record<string, string>;
+    }>
   ): void {
     if (this.session) {
       let { prese } = event.detail;
-      const { bestia } = event.detail;
+      let { bestia } = event.detail;
 
       // Convert prese from plain object to Map if needed (events don't preserve Map type)
       if (!(prese instanceof Map)) {
@@ -201,17 +204,26 @@ export class BestiaApp extends LitElement {
         prese = preseMap;
       }
 
+      // Convert bestia from plain object to Map if needed
+      if (!(bestia instanceof Map)) {
+        const bestiaMap = new Map<string, string>();
+        Object.entries(bestia).forEach(([playerId, type]) => {
+          bestiaMap.set(playerId, type);
+        });
+        bestia = bestiaMap;
+      }
+
       // Calculate payouts without saving
       const calculatedAmounts = StorageService.calculateRoundPayouts(
         this.session,
         prese as Map<string, number>,
-        bestia
+        bestia as Map<string, string>
       );
 
       // Store the review data to pass to game-actions
       this.reviewingRoundResult = {
         prese: prese as Map<string, number>,
-        bestia,
+        bestia: bestia as Map<string, string>,
         calculatedAmounts,
       };
 
@@ -303,20 +315,39 @@ export class BestiaApp extends LitElement {
 
   private handleRoundConfirmed(
     event: CustomEvent<{
-      prese: Map<string, number>;
-      bestia: string[];
-      adjustedAmounts: Map<string, number>;
+      prese: Map<string, number> | Record<string, number>;
+      bestia: Map<string, string> | Record<string, string>;
+      adjustedAmounts: Map<string, number> | Record<string, number>;
     }>
   ): void {
     if (this.session && this.reviewingRoundResult) {
-      const { prese, bestia, adjustedAmounts } = event.detail;
+      let { prese, bestia, adjustedAmounts } = event.detail;
+
+      // Convert to Maps if needed (events don't preserve Map type)
+      if (!(prese instanceof Map)) {
+        const preseMap = new Map<string, number>();
+        Object.entries(prese).forEach(([k, v]) => preseMap.set(k, v));
+        prese = preseMap;
+      }
+
+      if (!(bestia instanceof Map)) {
+        const bestiaMap = new Map<string, string>();
+        Object.entries(bestia).forEach(([k, v]) => bestiaMap.set(k, v));
+        bestia = bestiaMap;
+      }
+
+      if (!(adjustedAmounts instanceof Map)) {
+        const amountsMap = new Map<string, number>();
+        Object.entries(adjustedAmounts).forEach(([k, v]) => amountsMap.set(k, v));
+        adjustedAmounts = amountsMap;
+      }
 
       // Create the round event with adjusted amounts
       const updatedSession = StorageService.recordRoundWithAmounts(
         this.session,
-        prese,
-        bestia,
-        adjustedAmounts
+        prese as Map<string, number>,
+        bestia as Map<string, string>,
+        adjustedAmounts as Map<string, number>
       );
 
       this.session = { ...updatedSession };
