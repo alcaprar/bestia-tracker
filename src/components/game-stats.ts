@@ -13,10 +13,11 @@ export class GameStats extends LitElement {
   private selectedPlayers: Set<string> = new Set();
 
   private charts: Map<string, Chart> = new Map();
+  private hasInitializedPlayers = false;
 
   updated(): void {
-    // Initialize selected players on first load
-    if (this.selectedPlayers.size === 0 && this.session) {
+    // Initialize selected players only once when session is first set
+    if (!this.hasInitializedPlayers && this.session) {
       const initialSelected = new Set<string>();
       this.session.players.forEach((p) => {
         if (p.isActive) {
@@ -24,6 +25,12 @@ export class GameStats extends LitElement {
         }
       });
       this.selectedPlayers = initialSelected;
+      this.hasInitializedPlayers = true;
+    }
+
+    // Reset initialization flag if session changes
+    if (this.session && this.hasInitializedPlayers) {
+      // Session is still the same, keep the flag
     }
 
     // Destroy old charts before creating new ones
@@ -81,6 +88,12 @@ export class GameStats extends LitElement {
   private createBalanceProgressionChart(): void {
     const canvas = this.shadowRoot?.querySelector('#balanceProgressionChart') as HTMLCanvasElement;
     if (!canvas) return;
+
+    // Destroy any existing chart on this canvas
+    const existingChart = Chart.getChart(canvas);
+    if (existingChart) {
+      existingChart.destroy();
+    }
 
     // Get all events in order (not just round_end)
     const allEvents = this.session!.events;
@@ -175,6 +188,12 @@ export class GameStats extends LitElement {
     const canvas = this.shadowRoot?.querySelector('#currentBalanceChart') as HTMLCanvasElement;
     if (!canvas) return;
 
+    // Destroy any existing chart on this canvas
+    const existingChart = Chart.getChart(canvas);
+    if (existingChart) {
+      existingChart.destroy();
+    }
+
     const balances = StorageService.calculatePlayerBalances(this.session!);
     const activePlayersWithBalances = this.session!.players.filter((p) => p.isActive)
       .map((p) => ({
@@ -230,6 +249,12 @@ export class GameStats extends LitElement {
   private createWinRateChart(): void {
     const canvas = this.shadowRoot?.querySelector('#winRateChart') as HTMLCanvasElement;
     if (!canvas) return;
+
+    // Destroy any existing chart on this canvas
+    const existingChart = Chart.getChart(canvas);
+    if (existingChart) {
+      existingChart.destroy();
+    }
 
     const wins = StorageService.getPlayerWins(this.session!);
     const roundsPlayed = StorageService.getPlayerRoundsPlayed(this.session!);
@@ -320,6 +345,12 @@ export class GameStats extends LitElement {
   private createBestiaCountChart(): void {
     const canvas = this.shadowRoot?.querySelector('#bestiaCountChart') as HTMLCanvasElement;
     if (!canvas) return;
+
+    // Destroy any existing chart on this canvas
+    const existingChart = Chart.getChart(canvas);
+    if (existingChart) {
+      existingChart.destroy();
+    }
 
     const bestiaCount = StorageService.getBestiaCount(this.session!);
 
