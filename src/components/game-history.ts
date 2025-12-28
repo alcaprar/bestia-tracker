@@ -1,5 +1,5 @@
 import { LitElement, css, html } from 'lit';
-import { customElement, property } from 'lit/decorators.js';
+import { customElement, property, state } from 'lit/decorators.js';
 import type { GameEvent, Player } from '../types.js';
 
 @customElement('game-history')
@@ -12,6 +12,9 @@ export class GameHistory extends LitElement {
 
   @property({ type: String })
   currency: string = '€';
+
+  @state()
+  private openMenuEventId: string | null = null;
 
   private formatTime(timestamp: number): string {
     const date = new Date(timestamp);
@@ -36,6 +39,15 @@ export class GameHistory extends LitElement {
     return event.type;
   }
 
+  private toggleMenu(eventId: string, event: Event): void {
+    event.stopPropagation();
+    this.openMenuEventId = this.openMenuEventId === eventId ? null : eventId;
+  }
+
+  private closeMenu(): void {
+    this.openMenuEventId = null;
+  }
+
   private deleteEvent(eventId: string): void {
     if (confirm('Eliminare questo evento?')) {
       this.dispatchEvent(
@@ -43,7 +55,17 @@ export class GameHistory extends LitElement {
           detail: { eventId },
         })
       );
+      this.closeMenu();
     }
+  }
+
+  private modifyEvent(eventId: string): void {
+    this.dispatchEvent(
+      new CustomEvent('modify-event', {
+        detail: { eventId },
+      })
+    );
+    this.closeMenu();
   }
 
   render() {
@@ -62,7 +84,7 @@ export class GameHistory extends LitElement {
               <th class="event-col">Evento</th>
               <th class="time-col">Ora</th>
               ${this.players.map((player) => html`<th class="player-col">${player.name}</th>`)}
-              <th class="delete-col"></th>
+              <th class="action-col"></th>
             </tr>
           </thead>
           <tbody>
@@ -78,14 +100,36 @@ export class GameHistory extends LitElement {
                       </td>
                     `
                   )}
-                  <td class="delete-col">
-                    <button
-                      class="delete-btn"
-                      @click=${() => this.deleteEvent(event.id)}
-                      title="Delete event"
-                    >
-                      ✕
-                    </button>
+                  <td class="action-col">
+                    <div class="action-menu-container">
+                      <button
+                        class="action-menu-btn"
+                        @click=${(e: Event) => this.toggleMenu(event.id, e)}
+                        title="Menu"
+                      >
+                        ⋮
+                      </button>
+
+                      ${this.openMenuEventId === event.id
+                        ? html`
+                            <div class="action-menu-dropdown">
+                              <button
+                                class="menu-item modify-item"
+                                @click=${() => this.modifyEvent(event.id)}
+                              >
+                                ✏️ Modifica
+                              </button>
+                              <button
+                                class="menu-item delete-item"
+                                @click=${() => this.deleteEvent(event.id)}
+                              >
+                                🗑️ Elimina
+                              </button>
+                            </div>
+                            <div class="menu-backdrop" @click=${this.closeMenu}></div>
+                          `
+                        : ''}
+                    </div>
                   </td>
                 </tr>
               `
@@ -212,13 +256,17 @@ export class GameHistory extends LitElement {
       font-weight: 700;
     }
 
-    .delete-col {
+    .action-col {
       width: 40px;
       text-align: center;
       padding: 0.5rem;
     }
 
-    .delete-btn {
+    .action-menu-container {
+      position: relative;
+    }
+
+    .action-menu-btn {
       width: 28px;
       height: 28px;
       padding: 0;
@@ -234,9 +282,64 @@ export class GameHistory extends LitElement {
       justify-content: center;
     }
 
-    .delete-btn:hover {
-      background: var(--danger);
-      color: white;
+    .action-menu-btn:hover {
+      background: var(--gray-100);
+      color: var(--gray-900);
+    }
+
+    .action-menu-dropdown {
+      position: absolute;
+      right: 0;
+      top: 100%;
+      background: white;
+      border: 1px solid var(--gray-200);
+      border-radius: 0.5rem;
+      box-shadow:
+        0 4px 6px -1px rgba(0, 0, 0, 0.1),
+        0 2px 4px -1px rgba(0, 0, 0, 0.06);
+      z-index: 1000;
+      min-width: 150px;
+      overflow: hidden;
+      margin-top: 0.25rem;
+    }
+
+    .menu-item {
+      width: 100%;
+      padding: 0.75rem 1rem;
+      border: none;
+      background: white;
+      color: var(--gray-900);
+      cursor: pointer;
+      text-align: left;
+      font-size: 0.875rem;
+      transition: background 0.2s;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .menu-item:hover {
+      background: var(--gray-50);
+    }
+
+    .menu-item.delete-item:hover {
+      background: #fee;
+      color: var(--danger);
+    }
+
+    .menu-item.modify-item:hover {
+      background: #f0f9ff;
+      color: var(--primary);
+    }
+
+    .menu-backdrop {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 999;
+      background: transparent;
     }
 
     @media (max-width: 1024px) {
