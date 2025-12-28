@@ -188,27 +188,9 @@ export class StorageService {
     }
 
     if (bestiaTypes.size > 0) {
-      // Calculate effective pot based on split bestia
-      let effectivePot = potAtStart;
-
-      // Find the maximum split factor among all bestia players
-      const splitFactors = Array.from(bestiaTypes.values()).map((type) => {
-        if (type === 'in_due') return 2;
-        if (type === 'in_tre') return 3;
-        if (type === 'in_quattro') return 4;
-        return 1; // standard bestia
-      });
-
-      // If there are any split bestia, use the maximum factor
-      // (all players in that split pay equally)
-      if (splitFactors.some((f) => f > 1)) {
-        const maxFactor = Math.max(...splitFactors);
-        effectivePot = potAtStart / maxFactor;
-      }
-
-      // Winners split the effective pot proportionally by prese
+      // Winners always split the full pot proportionally by prese
       winners.forEach(([playerId, prese]) => {
-        const share = (prese / totalPrese) * effectivePot;
+        const share = (prese / totalPrese) * potAtStart;
         payouts.set(playerId, (payouts.get(playerId) || 0) + share);
       });
 
