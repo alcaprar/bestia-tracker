@@ -186,17 +186,31 @@ export class BestiaApp extends LitElement {
   }
 
   private handleRoundRecorded(
-    event: CustomEvent<{ prese: Map<string, number>; bestia: string[] }>
+    event: CustomEvent<{ prese: Map<string, number> | Record<string, number>; bestia: string[] }>
   ): void {
     if (this.session) {
-      const { prese, bestia } = event.detail;
+      let { prese } = event.detail;
+      const { bestia } = event.detail;
+
+      // Convert prese from plain object to Map if needed (events don't preserve Map type)
+      if (!(prese instanceof Map)) {
+        const preseMap = new Map<string, number>();
+        Object.entries(prese).forEach(([playerId, value]) => {
+          preseMap.set(playerId, value);
+        });
+        prese = preseMap;
+      }
 
       // Calculate payouts without saving
-      const calculatedAmounts = StorageService.calculateRoundPayouts(this.session, prese, bestia);
+      const calculatedAmounts = StorageService.calculateRoundPayouts(
+        this.session,
+        prese as Map<string, number>,
+        bestia
+      );
 
       // Store the review data to pass to game-actions
       this.reviewingRoundResult = {
-        prese,
+        prese: prese as Map<string, number>,
         bestia,
         calculatedAmounts,
       };

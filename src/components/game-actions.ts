@@ -427,8 +427,8 @@ export class GameActions extends LitElement {
                     <span class="currency-symbol">${this.currency}</span>
                     <input
                       type="number"
-                      step="0.01"
-                      .value=${amount.toString()}
+                      step="any"
+                      .value=${amount.toFixed(2)}
                       @input=${(e: Event) => {
                         const value = parseFloat((e.target as HTMLInputElement).value) || 0;
                         this.updateManualAmount(player.id, value);

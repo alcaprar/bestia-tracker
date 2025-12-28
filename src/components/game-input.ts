@@ -20,10 +20,41 @@ export class GameInput extends LitElement {
   currency: string = '€';
 
   @state()
-  private playerSelection: Map<string, 'none' | '1' | '2' | '3' | 'bestia'> = new Map();
+  private playerSelection: Map<
+    string,
+    | 'none'
+    | '1'
+    | '2'
+    | '3'
+    | 'bestia'
+    | '1_presa_in_due'
+    | '1_presa_in_tre'
+    | '2_prese_in_due'
+    | '2_prese_in_tre'
+    | 'bestia_in_due'
+    | 'bestia_in_tre'
+    | 'bestia_in_quattro'
+  > = new Map();
 
   @state()
-  private lastSelectedOption: Map<string, 'none' | '1' | '2' | '3' | 'bestia'> = new Map();
+  private lastSelectedOption: Map<
+    string,
+    | 'none'
+    | '1'
+    | '2'
+    | '3'
+    | 'bestia'
+    | '1_presa_in_due'
+    | '1_presa_in_tre'
+    | '2_prese_in_due'
+    | '2_prese_in_tre'
+    | 'bestia_in_due'
+    | 'bestia_in_tre'
+    | 'bestia_in_quattro'
+  > = new Map();
+
+  @state()
+  private showAdvanced: Map<string, boolean> = new Map();
 
   connectedCallback() {
     super.connectedCallback();
@@ -38,7 +69,19 @@ export class GameInput extends LitElement {
 
   private setPlayerSelection(
     playerId: string,
-    selection: 'none' | '1' | '2' | '3' | 'bestia'
+    selection:
+      | 'none'
+      | '1'
+      | '2'
+      | '3'
+      | 'bestia'
+      | '1_presa_in_due'
+      | '1_presa_in_tre'
+      | '2_prese_in_due'
+      | '2_prese_in_tre'
+      | 'bestia_in_due'
+      | 'bestia_in_tre'
+      | 'bestia_in_quattro'
   ): void {
     const currentSelection = this.playerSelection.get(playerId) || 'none';
 
@@ -53,6 +96,44 @@ export class GameInput extends LitElement {
     this.requestUpdate();
   }
 
+  private toggleAdvanced(playerId: string): void {
+    const current = this.showAdvanced.get(playerId) || false;
+    this.showAdvanced.set(playerId, !current);
+    this.requestUpdate();
+  }
+
+  private getPreseValue(
+    selection:
+      | 'none'
+      | '1'
+      | '2'
+      | '3'
+      | 'bestia'
+      | '1_presa_in_due'
+      | '1_presa_in_tre'
+      | '2_prese_in_due'
+      | '2_prese_in_tre'
+      | 'bestia_in_due'
+      | 'bestia_in_tre'
+      | 'bestia_in_quattro'
+  ): number {
+    const preseMap: Record<string, number> = {
+      none: 0,
+      '1': 1,
+      '2': 2,
+      '3': 3,
+      bestia: 0,
+      '1_presa_in_due': 0.5,
+      '1_presa_in_tre': 1 / 3,
+      '2_prese_in_due': 1,
+      '2_prese_in_tre': 2 / 3,
+      bestia_in_due: 0,
+      bestia_in_tre: 0,
+      bestia_in_quattro: 0,
+    };
+    return preseMap[selection] || 0;
+  }
+
   private calculatePayouts(): Map<string, number> {
     const payouts = new Map<string, number>();
     const potAmount = this.currentPot;
@@ -63,20 +144,31 @@ export class GameInput extends LitElement {
       payouts.set(player.id, 0);
     });
 
-    // Get bestia players and prese conversion (only from active players)
+    // Get selections and build prese map (only from active players)
     const preseMap = new Map<string, number>();
     const bestiaPlayers: string[] = [];
+    const bestiaType = new Map<string, string>(); // Track bestia type (standard, in_due, in_tre, in_quattro)
 
     this.players.forEach((player) => {
       if (player.isActive) {
         const selection = this.playerSelection.get(player.id) || 'none';
-        if (selection === 'bestia') {
+        const preseValue = this.getPreseValue(selection);
+
+        if (
+          selection === 'bestia' ||
+          selection === 'bestia_in_due' ||
+          selection === 'bestia_in_tre' ||
+          selection === 'bestia_in_quattro'
+        ) {
           bestiaPlayers.push(player.id);
           preseMap.set(player.id, 0);
-        } else if (selection === 'none') {
-          preseMap.set(player.id, 0);
+          if (selection === 'bestia') {
+            bestiaType.set(player.id, 'standard');
+          } else {
+            bestiaType.set(player.id, selection.replace('bestia_', '').replace('_', '_'));
+          }
         } else {
-          preseMap.set(player.id, parseInt(selection));
+          preseMap.set(player.id, preseValue);
         }
       }
     });
@@ -93,9 +185,23 @@ export class GameInput extends LitElement {
         payouts.set(player.id, share);
       });
 
-      // Bestia players pay the pot amount
+      // Bestia players pay - check if split or standard
       bestiaPlayers.forEach((playerId) => {
-        payouts.set(playerId, -potAmount);
+        const type = bestiaType.get(playerId) || 'standard';
+
+        if (type === 'standard') {
+          // Standard bestia: pays entire pot
+          payouts.set(playerId, -potAmount);
+        } else if (type === 'in_due') {
+          // 2 players pay equally
+          payouts.set(playerId, -potAmount / 2);
+        } else if (type === 'in_tre') {
+          // 3 players pay equally
+          payouts.set(playerId, -potAmount / 3);
+        } else if (type === 'in_quattro') {
+          // 4 players pay equally
+          payouts.set(playerId, -potAmount / 4);
+        }
       });
     } else {
       // No bestia: winners split pot among themselves
@@ -119,21 +225,26 @@ export class GameInput extends LitElement {
     this.players.forEach((player) => {
       if (player.isActive) {
         const selection = this.playerSelection.get(player.id) || 'none';
-        if (selection === 'bestia') {
+
+        if (
+          selection === 'bestia' ||
+          selection === 'bestia_in_due' ||
+          selection === 'bestia_in_tre' ||
+          selection === 'bestia_in_quattro'
+        ) {
           bestiaPlayers.push(player.id);
           preseMap.set(player.id, 0);
-        } else if (selection === 'none') {
-          preseMap.set(player.id, 0);
         } else {
-          const preseCount = parseInt(selection);
-          preseMap.set(player.id, preseCount);
-          totalPrese += preseCount;
+          const preseValue = this.getPreseValue(selection);
+          preseMap.set(player.id, preseValue);
+          totalPrese += preseValue;
         }
       }
     });
 
     // Must have exactly 3 prese to submit
-    if (totalPrese !== 3) {
+    if (Math.abs(totalPrese - 3) > 0.0001) {
+      // Allow for floating point rounding errors
       return; // Can't submit without exactly 3 prese
     }
 
@@ -148,8 +259,10 @@ export class GameInput extends LitElement {
 
     // Reset form - create new instances to ensure reactivity
     this.playerSelection = new Map();
+    this.showAdvanced = new Map();
     this.players.forEach((player) => {
       this.playerSelection.set(player.id, 'none');
+      this.showAdvanced.set(player.id, false);
     });
     this.requestUpdate();
   }
@@ -160,19 +273,38 @@ export class GameInput extends LitElement {
     this.players.forEach((player) => {
       if (player.isActive) {
         const selection = this.playerSelection.get(player.id) || 'none';
-        if (selection !== 'none' && selection !== 'bestia') {
-          totalPrese += parseInt(selection);
+        if (
+          selection !== 'none' &&
+          selection !== 'bestia' &&
+          selection !== 'bestia_in_due' &&
+          selection !== 'bestia_in_tre' &&
+          selection !== 'bestia_in_quattro'
+        ) {
+          totalPrese += this.getPreseValue(selection);
         }
       }
     });
 
-    const canSubmit = totalPrese === 3;
+    const canSubmit = Math.abs(totalPrese - 3) < 0.0001; // Allow for floating point rounding
     const payouts = this.calculatePayouts();
-    const options = [
+    const basicOptions = [
       { value: '1' as const, label: '1 Presa', icon: '' },
       { value: '2' as const, label: '2 Prese', icon: '' },
       { value: '3' as const, label: '3 Prese', icon: '' },
       { value: 'bestia' as const, label: 'Bestia', icon: '💣' },
+    ];
+    const advancedOptions = [
+      { value: '1_presa_in_due' as const, label: '1 Presa in Due (0.5)', icon: '' },
+      { value: '1_presa_in_tre' as const, label: '1 Presa in Tre (0.333)', icon: '' },
+      { value: '2_prese_in_due' as const, label: '2 Prese in Due (1)', icon: '' },
+      { value: '2_prese_in_tre' as const, label: '2 Prese in Tre (0.666)', icon: '' },
+      { value: 'bestia_in_due' as const, label: '1 Bestia in Due', icon: '💣' },
+      { value: 'bestia_in_tre' as const, label: '1 Bestia in Tre', icon: '💣' },
+      {
+        value: 'bestia_in_quattro' as const,
+        label: '1 Bestia in Quattro',
+        icon: '💣',
+      },
     ];
 
     return html`
@@ -207,7 +339,7 @@ export class GameInput extends LitElement {
 
                   <fieldset class="radio-group">
                     <legend class="sr-only">Seleziona prese per ${player.name}</legend>
-                    ${options.map(
+                    ${basicOptions.map(
                       (option) => html`
                         <label class="radio-label">
                           <input
@@ -227,6 +359,39 @@ export class GameInput extends LitElement {
                     )}
                   </fieldset>
 
+                  <button
+                    class="advanced-toggle"
+                    @click=${() => this.toggleAdvanced(player.id)}
+                    type="button"
+                  >
+                    ${this.showAdvanced.get(player.id) ? '▼ Casi Speciali' : '▶ Casi Speciali'}
+                  </button>
+
+                  ${this.showAdvanced.get(player.id)
+                    ? html`
+                        <fieldset class="radio-group advanced-group">
+                          <legend class="sr-only">Opzioni avanzate per ${player.name}</legend>
+                          ${advancedOptions.map(
+                            (option) => html`
+                              <label class="radio-label">
+                                <input
+                                  type="radio"
+                                  name="prese-${player.id}"
+                                  value=${option.value}
+                                  .checked=${(this.playerSelection.get(player.id) || 'none') ===
+                                  option.value}
+                                  @click=${() => this.setPlayerSelection(player.id, option.value)}
+                                />
+                                <span class="radio-content">
+                                  <span class="radio-icon">${option.icon}</span>
+                                  <span class="radio-label-text">${option.label}</span>
+                                </span>
+                              </label>
+                            `
+                          )}
+                        </fieldset>
+                      `
+                    : ''}
                   ${payouts.get(player.id) !== 0
                     ? html`
                         <div class="payout ${payouts.get(player.id)! > 0 ? 'win' : 'loss'}">
@@ -422,6 +587,35 @@ export class GameInput extends LitElement {
     .radio-label input[type='radio']:checked + .radio-content {
       color: var(--primary);
       font-weight: 600;
+    }
+
+    .advanced-toggle {
+      width: 100%;
+      padding: 0.5rem;
+      margin: 0.5rem 0;
+      background: transparent;
+      color: var(--primary);
+      border: 1px solid var(--gray-200);
+      border-radius: 0.375rem;
+      font-size: 0.75rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      text-transform: uppercase;
+    }
+
+    .advanced-toggle:hover {
+      background: var(--gray-200);
+      color: var(--primary);
+    }
+
+    .advanced-group {
+      margin-top: 0.5rem;
+      padding-top: 0.5rem;
+      border-top: 1px solid var(--gray-200);
+      background: rgba(59, 130, 246, 0.02);
+      padding: 0.5rem;
+      border-radius: 0.375rem;
     }
 
     .payout {
