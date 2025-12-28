@@ -17,11 +17,13 @@ export class GameStats extends LitElement {
   updated(): void {
     // Initialize selected players on first load
     if (this.selectedPlayers.size === 0 && this.session) {
+      const initialSelected = new Set<string>();
       this.session.players.forEach((p) => {
         if (p.isActive) {
-          this.selectedPlayers.add(p.id);
+          initialSelected.add(p.id);
         }
       });
+      this.selectedPlayers = initialSelected;
     }
 
     // Destroy old charts before creating new ones
