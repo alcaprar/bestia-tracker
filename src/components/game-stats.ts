@@ -1,5 +1,5 @@
 import { LitElement, css, html } from 'lit';
-import { customElement, property } from 'lit/decorators.js';
+import { customElement, property, state } from 'lit/decorators.js';
 import type { GameSession } from '../types.js';
 import { StorageService } from '../storage.js';
 import Chart from 'chart.js/auto';
@@ -9,9 +9,21 @@ export class GameStats extends LitElement {
   @property({ type: Object })
   session: GameSession | null = null;
 
+  @state()
+  private selectedPlayers: Set<string> = new Set();
+
   private charts: Map<string, Chart> = new Map();
 
   updated(): void {
+    // Initialize selected players on first load
+    if (this.selectedPlayers.size === 0 && this.session) {
+      this.session.players.forEach((p) => {
+        if (p.isActive) {
+          this.selectedPlayers.add(p.id);
+        }
+      });
+    }
+
     // Destroy old charts before creating new ones
     this.charts.forEach((chart) => chart.destroy());
     this.charts.clear();
@@ -31,6 +43,28 @@ export class GameStats extends LitElement {
 
   private getCurrency(): string {
     return this.session?.currency || '€';
+  }
+
+  private togglePlayer(playerId: string): void {
+    if (this.selectedPlayers.has(playerId)) {
+      this.selectedPlayers.delete(playerId);
+    } else {
+      this.selectedPlayers.add(playerId);
+    }
+    this.selectedPlayers = new Set(this.selectedPlayers); // Trigger reactivity
+    this.requestUpdate();
+  }
+
+  private selectAllPlayers(): void {
+    this.selectedPlayers = new Set(
+      this.session!.players.filter((p) => p.isActive).map((p) => p.id)
+    );
+    this.requestUpdate();
+  }
+
+  private deselectAllPlayers(): void {
+    this.selectedPlayers.clear();
+    this.requestUpdate();
   }
 
   private createCharts(): void {
@@ -54,7 +88,9 @@ export class GameStats extends LitElement {
       return 'Giro Chiuso';
     });
 
-    const datasets = this.session!.players.filter((p) => p.isActive).map((player, index) => {
+    const datasets = this.session!.players.filter(
+      (p) => p.isActive && this.selectedPlayers.has(p.id)
+    ).map((player, index) => {
       // Get full progression with all events
       const fullProgression: number[] = [];
       let lastBalance = 0;
@@ -436,6 +472,34 @@ export class GameStats extends LitElement {
                 ⬇️
               </button>
             </div>
+            <div class="player-filter">
+              <div class="filter-controls">
+                <button
+                  class="filter-btn ${this.selectedPlayers.size ===
+                  this.session!.players.filter((p) => p.isActive).length
+                    ? 'active'
+                    : ''}"
+                  @click=${this.selectAllPlayers}
+                >
+                  Tutti
+                </button>
+                <button class="filter-btn" @click=${this.deselectAllPlayers}>Nessuno</button>
+              </div>
+              <div class="player-checkboxes">
+                ${this.session!.players.filter((p) => p.isActive).map(
+                  (player) => html`
+                    <label class="player-checkbox">
+                      <input
+                        type="checkbox"
+                        .checked=${this.selectedPlayers.has(player.id)}
+                        @change=${() => this.togglePlayer(player.id)}
+                      />
+                      <span>${player.name}</span>
+                    </label>
+                  `
+                )}
+              </div>
+            </div>
             <canvas id="balanceProgressionChart"></canvas>
           </div>
           <div class="chart-card">
@@ -596,6 +660,65 @@ export class GameStats extends LitElement {
 
     .download-btn:active {
       background: #1d4ed8;
+    }
+
+    .player-filter {
+      margin-bottom: 1rem;
+      padding: 0.75rem;
+      background: #f9fafb;
+      border-radius: 0.5rem;
+    }
+
+    .filter-controls {
+      display: flex;
+      gap: 0.5rem;
+      margin-bottom: 0.75rem;
+    }
+
+    .filter-btn {
+      padding: 0.35rem 0.75rem;
+      background: #e5e7eb;
+      color: #374151;
+      border: 1px solid #d1d5db;
+      border-radius: 0.375rem;
+      font-size: 0.85rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .filter-btn:hover {
+      background: #d1d5db;
+    }
+
+    .filter-btn.active {
+      background: #3b82f6;
+      color: white;
+      border-color: #3b82f6;
+    }
+
+    .player-checkboxes {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+    }
+
+    .player-checkbox {
+      display: flex;
+      align-items: center;
+      gap: 0.35rem;
+      font-size: 0.85rem;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .player-checkbox input {
+      cursor: pointer;
+      accent-color: #3b82f6;
+    }
+
+    .player-checkbox span {
+      color: #374151;
     }
 
     canvas {
