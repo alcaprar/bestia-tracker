@@ -35,6 +35,9 @@ export class BestiaApp extends LitElement {
   @state()
   private showPotInfoPopover: boolean = false;
 
+  @state()
+  private editingEventId: string | null = null;
+
   private boundHandleRouteChange = () => this.handleRouteChange();
 
   connectedCallback() {
@@ -221,6 +224,48 @@ export class BestiaApp extends LitElement {
       this.session = { ...this.session };
       this.requestUpdate();
     }
+  }
+
+  private handleModifyEvent(event: CustomEvent<{ eventId: string }>): void {
+    if (this.session) {
+      const eventId = event.detail.eventId;
+      const existingEvent = this.session.events.find((e) => e.id === eventId);
+
+      if (existingEvent) {
+        // Store the event ID being edited
+        this.editingEventId = eventId;
+        this.requestUpdate();
+      }
+    }
+  }
+
+  private handleManualEntryEdited(
+    event: CustomEvent<{
+      eventId: string;
+      amounts: Map<string, number>;
+      description?: string;
+    }>
+  ): void {
+    if (this.session) {
+      const { eventId, amounts, description } = event.detail;
+
+      // Update the event in the session
+      const updatedSession = StorageService.updateManualEntry(
+        this.session,
+        eventId,
+        amounts,
+        description
+      );
+
+      this.session = { ...updatedSession };
+      this.editingEventId = null;
+      this.requestUpdate();
+    }
+  }
+
+  private handleCancelEdit(): void {
+    this.editingEventId = null;
+    this.requestUpdate();
   }
 
   private handlePiattoChanged(event: CustomEvent<{ piatto: number }>): void {
@@ -512,10 +557,14 @@ export class BestiaApp extends LitElement {
                           : 0}
                         .piatto=${this.session?.piatto || 0}
                         .currency=${this.session?.currency || '€'}
+                        .editingEventId=${this.editingEventId}
+                        .events=${this.session.events}
                         @dealer-selected=${this.handleDealerSelected}
                         @round-recorded=${this.handleRoundRecorded}
                         @giro-chiuso-recorded=${this.handleGiroChiusoRecorded}
                         @manual-entry-recorded=${this.handleManualEntryRecorded}
+                        @manual-entry-edited=${this.handleManualEntryEdited}
+                        @cancel-edit=${this.handleCancelEdit}
                       ></game-actions>
                     `
                   : this.activeTab === 'history'
@@ -525,6 +574,7 @@ export class BestiaApp extends LitElement {
                           .players=${this.session.players}
                           .currency=${this.session?.currency || '€'}
                           @delete-event=${this.handleDeleteEvent}
+                          @modify-event=${this.handleModifyEvent}
                         ></game-history>
                       `
                     : this.activeTab === 'settings'

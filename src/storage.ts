@@ -318,6 +318,43 @@ export class StorageService {
     return session;
   }
 
+  static updateManualEntry(
+    session: GameSession,
+    eventId: string,
+    playerAmounts: Map<string, number>,
+    description?: string
+  ): GameSession {
+    // Find the event index
+    const eventIndex = session.events.findIndex((e) => e.id === eventId);
+
+    if (eventIndex === -1) {
+      console.error('Event not found:', eventId);
+      return session;
+    }
+
+    const originalEvent = session.events[eventIndex];
+
+    // Filter out zero values
+    const transactions: Transaction[] = Array.from(playerAmounts.entries())
+      .filter(([_, amount]) => amount !== 0)
+      .map(([playerId, amount]) => ({ playerId, amount }));
+
+    // Create updated event (keep original ID and timestamp, convert to manual_entry)
+    const updatedEvent: GameEvent = {
+      id: originalEvent.id,
+      type: 'manual_entry', // Always convert to manual_entry when editing
+      timestamp: originalEvent.timestamp,
+      transactions,
+      metadata: description ? { description } : undefined,
+    };
+
+    // Replace the event
+    session.events[eventIndex] = updatedEvent;
+
+    this.saveSession(session);
+    return session;
+  }
+
   static calculateCurrentPot(session: GameSession): number {
     // Pot is the negative sum of all transactions
     // (payments are negative, so summing them gives us the pot amount)

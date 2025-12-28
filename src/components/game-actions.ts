@@ -1,6 +1,7 @@
 import { LitElement, css, html } from 'lit';
+import type { PropertyValues } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
-import type { Player } from '../types.js';
+import type { Player, GameEvent } from '../types.js';
 import './game-input.js';
 
 type ActionStep = 'menu' | 'select_dealer' | 'record_result' | 'giro_chiuso' | 'manual_entry';
@@ -25,6 +26,12 @@ export class GameActions extends LitElement {
   @property({ type: String })
   currency: string = '€';
 
+  @property({ type: String })
+  editingEventId: string | null = null;
+
+  @property({ type: Array })
+  events: GameEvent[] = [];
+
   @state()
   private step: ActionStep = 'menu';
 
@@ -42,6 +49,34 @@ export class GameActions extends LitElement {
     if (this.players.length > 0 && !this.selectedDealerId) {
       this.selectedDealerId = this.players[0].id;
     }
+  }
+
+  updated(changedProperties: PropertyValues): void {
+    super.updated(changedProperties);
+
+    // If editingEventId is set, automatically navigate to manual_entry
+    if (changedProperties.has('editingEventId') && this.editingEventId) {
+      const eventToEdit = this.events.find((e) => e.id === this.editingEventId);
+      if (eventToEdit) {
+        this.step = 'manual_entry';
+        this.populateFormWithEvent(eventToEdit);
+      }
+    }
+  }
+
+  private populateFormWithEvent(event: GameEvent): void {
+    // Clear existing state
+    this.manualAmounts = new Map();
+
+    // Populate amounts from event transactions
+    event.transactions.forEach((transaction) => {
+      this.manualAmounts.set(transaction.playerId, transaction.amount);
+    });
+
+    // Populate description if it exists
+    this.manualDescription = event.metadata?.description || '';
+
+    this.requestUpdate();
   }
 
   private selectDealer(): void {
@@ -90,6 +125,16 @@ export class GameActions extends LitElement {
 
   private backToMenu(): void {
     this.step = 'menu';
+
+    // Notify parent to clear edit mode
+    if (this.editingEventId) {
+      this.dispatchEvent(
+        new CustomEvent('cancel-edit', {
+          bubbles: true,
+          composed: true,
+        })
+      );
+    }
   }
 
   private handleRecordResult(event: CustomEvent): void {
@@ -115,6 +160,26 @@ export class GameActions extends LitElement {
         },
       })
     );
+    this.manualAmounts = new Map();
+    this.manualDescription = '';
+    this.backToMenu();
+  }
+
+  private confirmManualEdit(): void {
+    if (!this.editingEventId) return;
+
+    this.dispatchEvent(
+      new CustomEvent('manual-entry-edited', {
+        detail: {
+          eventId: this.editingEventId,
+          amounts: this.manualAmounts,
+          description: this.manualDescription || undefined,
+        },
+        bubbles: true,
+        composed: true,
+      })
+    );
+
     this.manualAmounts = new Map();
     this.manualDescription = '';
     this.backToMenu();
@@ -249,11 +314,12 @@ export class GameActions extends LitElement {
 
   private renderManualEntry() {
     const hasAnyNonZero = Array.from(this.manualAmounts.values()).some((v) => v !== 0);
+    const isEditing = !!this.editingEventId;
 
     return html`
       <div class="actions-container">
         <div class="step-header">
-          <h2>Inserimento Manuale</h2>
+          <h2>${isEditing ? 'Modifica Inserimento' : 'Inserimento Manuale'}</h2>
           <button class="back-btn" @click=${this.backToMenu}>← Indietro</button>
         </div>
 
@@ -317,10 +383,10 @@ export class GameActions extends LitElement {
 
         <button
           class="confirm-btn manual-confirm-btn"
-          @click=${this.confirmManualEntry}
+          @click=${isEditing ? this.confirmManualEdit : this.confirmManualEntry}
           ?disabled=${!hasAnyNonZero}
         >
-          Conferma Inserimento Manuale
+          ${isEditing ? 'Salva Modifiche' : 'Conferma Inserimento Manuale'}
         </button>
       </div>
     `;
