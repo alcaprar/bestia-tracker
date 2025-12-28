@@ -359,11 +359,13 @@ export class StorageService {
   static recordGiroChiuso(session: GameSession): GameSession {
     const dealerPlayerId = session.players[session.currentDealerIndex].id;
 
-    // All players pay the basic piatto amount
-    const transactions: Transaction[] = session.players.map((player) => ({
-      playerId: player.id,
-      amount: -session.piatto,
-    }));
+    // Only active players pay the basic piatto amount
+    const transactions: Transaction[] = session.players
+      .filter((player) => player.isActive)
+      .map((player) => ({
+        playerId: player.id,
+        amount: -session.piatto,
+      }));
 
     const event: GameEvent = {
       id: Math.random().toString(36).substr(2, 9),
